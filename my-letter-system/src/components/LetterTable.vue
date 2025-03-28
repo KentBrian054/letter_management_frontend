@@ -1,10 +1,7 @@
 <template>
   <div class="p-6">
-    <!-- Network Status Indicator -->
-    <div class="fixed bottom-4 right-4 p-3 rounded-lg" :class="networkStatus ? 'bg-green-500' : 'bg-red-500'">
-      {{ networkStatus ? 'Connected' : 'Disconnected' }}
-    </div>
-
+    <!-- Remove the Network Status Indicator -->
+    
     <!-- Header and Add New Letter button -->
     <div class="flex justify-end items-center mb-6">
       <button 
@@ -316,19 +313,16 @@ import LetterForm from './LetterForm.vue';
 
 // Update the apiClient configuration
 const apiClient = axios.create({
-  baseURL: 'http://192.168.8.40:8000/api/letters',
-  timeout: 60000, // Increased timeout to 60 seconds
+  baseURL: 'http://192.168.8.40:8000/api',  // Changed baseURL to point to main API endpoint
+  timeout: 60000,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
     'Access-Control-Allow-Origin': '*'
   },
   withCredentials: false,
-  // Add proxy configuration if needed
   proxy: false,
-  // Add maximum retries
   maxRedirects: 5,
-  // Add keepalive
   keepAlive: true
 });
 
@@ -446,41 +440,47 @@ export default {
     },
     async checkNetwork() {
       try {
-        await axios.get('http://192.168.8.40:8000', { timeout: 5000 });
+        await axios.get('http://192.168.8.40:8000/api/letters');
+        this.networkStatus = true;
         return true;
       } catch (error) {
         console.error('Network connection error:', error);
+        this.networkStatus = false;
         return false;
       }
     },
 
     async fetchLetters() {
-      if (!await this.checkNetwork()) {
-        console.error('Network connection failed');
-        return;
-      }
-      try {
-        console.log('Fetching letters...');
-        const response = await apiClient.get('/letters', {
-          headers: {
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
+      if (await this.checkNetwork()) {
+        try {
+          const response = await apiClient.get('/letters');  // Use apiClient instead of axios
+          console.log('Raw API Response:', response);
+          console.log('Response Data Structure:', {
+            hasData: !!response?.data,
+            isArray: Array.isArray(response?.data),
+            dataType: typeof response?.data
+          });
+          
+          if (response?.data?.letters) {
+            this.letters = response.data.letters;
+          } else if (response?.data?.data) {
+            this.letters = response.data.data;
+          } else if (Array.isArray(response?.data)) {
+            this.letters = response.data;
+          } else {
+            console.error('Unexpected data structure:', response.data);
+            this.letters = [];
           }
-        });
-        console.log('Letters response:', response);
-        if (response?.data?.data) {
-          this.letters = response.data.data;
+          
+          console.log('Processed Letters:', this.letters);
+        } catch (error) {
+          console.error('Error fetching letters:', error);
+          if (error.response) {
+            console.error('Error Response:', error.response.data);
+            console.error('Status Code:', error.response.status);
+          }
+          this.letters = [];
         }
-      } catch (error) {
-        console.error('Full error object:', error);
-        if (error.response) {
-          console.error(`Server error (${error.response.status}):`, error.response.data);
-        } else if (error.code === 'ECONNABORTED') {
-          console.error('Request timed out - server might be down or wrong URL');
-        } else if (!error.response) {
-          console.error('Network error - check if API is running at correct address');
-        }
-        this.letters = [];
       }
     },
 
@@ -494,21 +494,15 @@ export default {
           }
         });
         console.log('Recipients response:', response);
-        if (response?.data?.data) {
-          this.recipients = response.data.data;
+        if (response?.data) {  // Changed from response?.data?.data
+          this.recipients = response.data;
         }
       } catch (error) {
-        console.error('Full error object:', error);
-        if (error.response) {
-          console.error(`Server error (${error.response.status}):`, error.response.data);
-        } else if (error.code === 'ECONNABORTED') {
-          console.error('Request timed out - server might be down or wrong URL');
-        } else if (!error.response) {
-          console.error('Network error - check if API is running at correct address');
-        }
+        console.error('Error fetching recipients:', error);
         this.recipients = [];
       }
     },
+
     formatRecipients(recipients) {
       return recipients.map(recipient => {
         if (typeof recipient === 'object') {

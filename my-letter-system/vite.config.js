@@ -11,19 +11,33 @@ export default defineConfig({
         target: 'http://192.168.8.40:8000',
         changeOrigin: true,
         secure: false,
-        timeout: 20000,  // Increased timeout to 20 seconds
+        timeout: 30000,
+        rewrite: (path) => path,  // Don't remove the /api prefix
         configure: (proxy, _options) => {
           proxy.on('error', (err, _req, _res) => {
             console.log('proxy error', err);
           });
           proxy.on('proxyReq', (proxyReq, req, _res) => {
-            console.log('Sending Request to the Target:', req.method, req.url);
+            console.log('Request URL:', req.url);
+            console.log('Request Method:', req.method);
+            console.log('Request Body:', req.body);
           });
           proxy.on('proxyRes', (proxyRes, req, _res) => {
-            console.log('Received Response from the Target:', proxyRes.statusCode, req.url);
+            if (proxyRes.statusCode === 404) {
+              console.log('404 Not Found:', {
+                url: req.url,
+                method: req.method,
+                headers: req.headers
+              });
+            }
           });
         }
       }
     }
-  }
+  },
+  // Disable WebSocket connection status messages
+  hmr: {
+    overlay: false
+  },
+  logLevel: 'error'
 })

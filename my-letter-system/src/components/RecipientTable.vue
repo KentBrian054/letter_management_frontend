@@ -309,8 +309,9 @@
 
 <script>
 import axios from 'axios';
+// Update the apiClient configuration
 const apiClient = axios.create({
-  baseURL: 'http://192.168.8.40:8000/api/letters',
+  baseURL: 'http://192.168.8.40:8000/api',
   timeout: 60000,
   headers: {
     'Content-Type': 'application/json',
@@ -397,12 +398,23 @@ export default {
       }
       try {
         const response = await apiClient.get('/recipients');
+        console.log('Recipients response:', response);
+        
+        // Update this part to handle the response data structure correctly
         if (response?.data?.data) {
           this.recipients = response.data.data;
-          console.log('Successfully fetched recipients:', this.recipients); // Added
+        } else if (Array.isArray(response?.data)) {
+          this.recipients = response.data;
+        } else {
+          console.error('Unexpected data structure:', response.data);
+          this.recipients = [];
         }
       } catch (error) {
         console.error('Error fetching recipients:', error);
+        if (error.response) {
+          console.error('Server response:', error.response.data);
+          console.error('Status code:', error.response.status);
+        }
         this.recipients = [];
       }
     },
@@ -441,13 +453,21 @@ export default {
     },
     async handleUpdateConfirm() {
       try {
-        const response = await apiClient.put(`/recipients/${this.currentRecipient.id}`, this.recipientForm);
-        if (response.data.success) {
+        const response = await apiClient.put(`/recipients/${this.currentRecipient.id}`, {
+          name: this.recipientForm.name,
+          position: this.recipientForm.position
+        });
+        
+        if (response.data) {
           await this.fetchRecipients();
           this.showUpdateConfirmModal = false;
+          this.showUpdateFormModal = false;
         }
       } catch (error) {
         console.error('Error updating recipient:', error);
+        if (error.response) {
+          console.error('Server error:', error.response.data);
+        }
       }
     }
   }
