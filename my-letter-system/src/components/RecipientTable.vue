@@ -310,7 +310,7 @@
 <script>
 import axios from 'axios';
 const apiClient = axios.create({
-  baseURL: 'http://192.168.5.15:8000/api/letters',
+  baseURL: 'http://192.168.8.40:8000/api/letters',
   timeout: 60000,
   headers: {
     'Content-Type': 'application/json',
@@ -382,7 +382,7 @@ export default {
   methods: {
     async checkNetwork() { // Added
       try {
-        const response = await axios.get('http://192.168.5.15:8000', { timeout: 5000 });
+        const response = await axios.get('http://192.168.8.40:8000', { timeout: 5000 });
         console.log('Network connection successful:', response);
         this.networkStatus = true;
       } catch (error) {

@@ -316,7 +316,7 @@ import LetterForm from './LetterForm.vue';
 
 // Update the apiClient configuration
 const apiClient = axios.create({
-  baseURL: 'http://192.168.5.15:8000/api/letters',
+  baseURL: 'http://192.168.8.40:8000/api/letters',
   timeout: 60000, // Increased timeout to 60 seconds
   headers: {
     'Content-Type': 'application/json',
@@ -446,7 +446,7 @@ export default {
     },
     async checkNetwork() {
       try {
-        await axios.get('http://192.168.5.15:8000', { timeout: 5000 });
+        await axios.get('http://192.168.8.40:8000', { timeout: 5000 });
         return true;
       } catch (error) {
         console.error('Network connection error:', error);
