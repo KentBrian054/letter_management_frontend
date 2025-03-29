@@ -105,9 +105,9 @@
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Recipients</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-gray-200">
-          <template v-if="filteredLetters.length">
-            <tr v-for="letter in filteredLetters" :key="letter.id">
+        <tbody class="bg-white divide-y divide-gray-200">
+          <template v-if="letters.length">
+            <tr v-for="letter in paginatedLetters" :key="letter.id">
               <td class="px-6 py-4 whitespace-nowrap flex space-x-3">
                 <button 
                   @click="openEditModal(letter)" 
@@ -290,7 +290,8 @@
       @update-letter="updateLetter"
       :letterData="currentLetter"
       :editMode="!!currentLetter"
-    />
+      :recipients="recipients"
+    /> <!-- Fixed comment syntax -->
 
     <!-- Delete Success Message -->
     <div v-if="showDeleteSuccess" class="fixed inset-0 flex items-center justify-center">
@@ -396,25 +397,19 @@ export default {
     },
     filteredLetters() {
       return this.letters.filter(letter => {
-        const matchesTitle = letter.title?.toLowerCase().includes(this.searchQuery.toLowerCase()) ?? false;
+        const matchesName = letter.name?.toLowerCase().includes(this.searchQuery.toLowerCase()) ?? false;
         const matchesSubject = letter.subject?.toLowerCase().includes(this.searchSubject.toLowerCase()) ?? false;
-        const matchesType = this.selectedType ? letter.type === this.selectedType : true;
-        const matchesRecipient = this.searchRecipient ? 
-          letter.recipients?.some(r => 
-            r.name?.toLowerCase().includes(this.searchRecipient.toLowerCase())
-          ) ?? false : true;
+        const matchesType = this.selectedType ? letter.letter_type.toLowerCase() === this.selectedType.toLowerCase() : true;
+        const matchesSender = this.searchRecipient ? 
+          letter.sender_name?.toLowerCase().includes(this.searchRecipient.toLowerCase()) ?? false : true;
         
-        const matchesDateRange = (!this.dateRange.start || new Date(letter.date) >= new Date(this.dateRange.start)) &&
-                                 (!this.dateRange.end || new Date(letter.date) <= new Date(this.dateRange.end));
+        const letterDate = new Date(letter.date_created);
+        const matchesDateRange = (!this.dateRange.start || letterDate >= new Date(this.dateRange.start)) &&
+                               (!this.dateRange.end || letterDate <= new Date(this.dateRange.end));
         
-        return matchesTitle && matchesSubject && matchesType && matchesRecipient && matchesDateRange;
-      }).sort((a, b) => {
-        if (this.sortKey === 'date') {
-          return new Date(a.date) - new Date(b.date);
-        }
-        return a[this.sortKey]?.localeCompare(b[this.sortKey]) ?? 0;
+        return matchesName && matchesSubject && matchesType && matchesSender && matchesDateRange;
       });
-    }
+    },
   },
   async mounted() {
     try {
@@ -451,36 +446,27 @@ export default {
     },
 
     async fetchLetters() {
-      if (await this.checkNetwork()) {
-        try {
-          const response = await apiClient.get('/letters');  // Use apiClient instead of axios
-          console.log('Raw API Response:', response);
-          console.log('Response Data Structure:', {
-            hasData: !!response?.data,
-            isArray: Array.isArray(response?.data),
-            dataType: typeof response?.data
-          });
-          
-          if (response?.data?.letters) {
-            this.letters = response.data.letters;
-          } else if (response?.data?.data) {
-            this.letters = response.data.data;
-          } else if (Array.isArray(response?.data)) {
-            this.letters = response.data;
-          } else {
-            console.error('Unexpected data structure:', response.data);
-            this.letters = [];
-          }
-          
-          console.log('Processed Letters:', this.letters);
-        } catch (error) {
-          console.error('Error fetching letters:', error);
-          if (error.response) {
-            console.error('Error Response:', error.response.data);
-            console.error('Status Code:', error.response.status);
-          }
+      try {
+        console.log('Attempting to fetch letters...');
+        const response = await apiClient.get('/letters');
+        console.log('Letters response:', response);
+        
+        // Check for the success and data structure
+        if (response.data.success && Array.isArray(response.data.data)) {
+          this.letters = response.data.data;
+        } else {
+          console.error('Unexpected data structure:', response.data);
           this.letters = [];
         }
+
+        console.log('Processed letters:', this.letters);
+      } catch (error) {
+        console.error('Letters fetch error:', {
+          message: error.message,
+          status: error.response?.status,
+          data: error.response?.data
+        });
+        this.letters = [];
       }
     },
 
@@ -523,6 +509,48 @@ export default {
 
     previewLetter(letter) {
       console.log('Preview letter:', letter);
+    },
+
+    // Move these methods inside the methods object
+    async addLetter(letterData) {
+      try {
+        const response = await apiClient.post('/letters', letterData);
+        if (response.data.success) {
+          await this.fetchLetters();
+          this.showLetterForm = false;
+        }
+      } catch (error) {
+        console.error('Error adding letter:', error);
+      }
+    },
+
+    async updateLetter(letterData) {
+      try {
+        const response = await apiClient.put(`/letters/${letterData.id}`, letterData);
+        if (response.data.success) {
+          await this.fetchLetters();
+          this.showEditModal = false;
+          this.currentLetter = null;
+        }
+      } catch (error) {
+        console.error('Error updating letter:', error);
+      }
+    },
+
+    async deleteLetter(letterId) {
+      try {
+        const response = await apiClient.delete(`/letters/${letterId}`);
+        if (response.data.success) {
+          await this.fetchLetters();
+          this.showDeleteConfirmModal = false;
+          this.showDeleteSuccess = true;
+          setTimeout(() => {
+            this.showDeleteSuccess = false;
+          }, 2000);
+        }
+      } catch (error) {
+        console.error('Error deleting letter:', error);
+      }
     }
   }
 };

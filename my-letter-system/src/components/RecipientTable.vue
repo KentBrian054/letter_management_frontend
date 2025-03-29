@@ -1,9 +1,6 @@
 <template>
   <div class="space-y-6">
-    <!-- Network Status Indicator -->
-    <div class="fixed bottom-4 right-4 p-3 rounded-lg" :class="networkStatus ? 'bg-green-500' : 'bg-red-500'">
-      {{ networkStatus ? 'Connected' : 'Disconnected' }}
-    </div>
+    <!-- Remove the Network Status Indicator div -->
 
     <!-- New Button -->
     <div class="mb-4 flex justify-end">
@@ -261,7 +258,7 @@
     <div v-if="showNewRecipientForm" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-hidden">
       <div class="bg-white rounded-lg p-6 w-full max-w-md">
         <h2 class="text-xl font-bold mb-4">New Recipient</h2>
-        <form @submit.prevent="handleNewRecipientSubmit">
+        <form @submit.prevent="handleNewRecipientSubmit()">
           <div class="space-y-4">
             <!-- Name Input -->
             <div>
@@ -309,7 +306,7 @@
 
 <script>
 import axios from 'axios';
-// Update the apiClient configuration
+// Update the apiClient configuration at the top of the script
 const apiClient = axios.create({
   baseURL: 'http://192.168.8.40:8000/api',
   timeout: 60000,
@@ -340,8 +337,8 @@ export default {
       newRecipientForm: {
         name: '',
         position: ''
-      },
-      networkStatus: false // Added
+      }
+      // networkStatus removed
     };
   },
   computed: {
@@ -381,94 +378,129 @@ export default {
     await this.fetchRecipients();
   },
   methods: {
-    async checkNetwork() { // Added
+    async checkNetwork() {
       try {
-        const response = await axios.get('http://192.168.8.40:8000', { timeout: 5000 });
-        console.log('Network connection successful:', response);
+        // Check using the recipients endpoint since we know it exists
+        const response = await apiClient.get('/recipients');
+        console.log('Network check response:', response);
         this.networkStatus = true;
+        return true;
       } catch (error) {
-        console.error('Network connection error:', error);
+        console.error('Network check details:', {
+          message: error.message,
+          code: error.code,
+          response: error.response
+        });
         this.networkStatus = false;
+        return false;
       }
-    },
+    },  // Added comma here
+
     async fetchRecipients() {
-      if (!this.networkStatus) {
-        console.error('Network connection failed');
-        return;
-      }
       try {
+        console.log('Fetching recipients...');
         const response = await apiClient.get('/recipients');
         console.log('Recipients response:', response);
         
-        // Update this part to handle the response data structure correctly
-        if (response?.data?.data) {
-          this.recipients = response.data.data;
-        } else if (Array.isArray(response?.data)) {
+        // Handle both array and object responses
+        if (Array.isArray(response.data)) {
           this.recipients = response.data;
-        } else {
-          console.error('Unexpected data structure:', response.data);
-          this.recipients = [];
+        } else if (response.data && Array.isArray(response.data.data)) {
+          this.recipients = response.data.data;
         }
+        
+        console.log('Updated recipients:', this.recipients);
       } catch (error) {
-        console.error('Error fetching recipients:', error);
-        if (error.response) {
-          console.error('Server response:', error.response.data);
-          console.error('Status code:', error.response.status);
-        }
+        console.error('Recipients fetch error:', error);
         this.recipients = [];
       }
-    },
-    confirmUpdate(recipient) {
-      this.currentRecipient = { ...recipient };
-      this.showEditModal = true;
-    },
-    confirmDelete(recipient) {
-      this.currentRecipient = recipient;
-      this.showDeleteConfirmModal = true;
-    },
-    previousPage() { // Added
+    },  // Added comma here
+
+    // Navigation methods
+    previousPage() {
       if (this.currentPage > 1) {
         this.currentPage--;
       }
     },
-    nextPage() { // Added
+
+    nextPage() {
       if (this.currentPage < this.totalPages) {
         this.currentPage++;
       }
     },
-    goToPage(page) { // Added
+
+    goToPage(page) {
       this.currentPage = page;
     },
-    handleDelete() { // Added
-      // Implement delete logic here
-      this.showDeleteModal = false;
+
+    // CRUD operations
+    async confirmDelete(recipient) {
+      this.currentRecipient = recipient;
+      this.showDeleteModal = true;
     },
-    handleUpdateSubmit() { // Added
-      // Implement update logic here
+
+    async handleDelete() {
+      try {
+        await apiClient.delete(`/recipients/${this.currentRecipient.id}`);
+        await this.fetchRecipients();
+        this.showDeleteModal = false;
+        this.currentRecipient = null;
+      } catch (error) {
+        console.error('Delete error:', error);
+      }
+    },
+
+    confirmUpdate(recipient) {
+      this.currentRecipient = recipient;
+      this.recipientForm.name = recipient.name;
+      this.recipientForm.position = recipient.position;
+      this.showUpdateFormModal = true;
+    },
+
+    async handleUpdateSubmit() {
       this.showUpdateFormModal = false;
+      this.showUpdateConfirmModal = true;
     },
-    handleNewRecipientSubmit() { // Added
-      // Implement new recipient logic here
-      this.showNewRecipientForm = false;
-    },
+
     async handleUpdateConfirm() {
       try {
-        const response = await apiClient.put(`/recipients/${this.currentRecipient.id}`, {
-          name: this.recipientForm.name,
-          position: this.recipientForm.position
-        });
-        
+        await apiClient.put(`/recipients/${this.currentRecipient.id}`, this.recipientForm);
+        await this.fetchRecipients();
+        this.showUpdateConfirmModal = false;
+        this.currentRecipient = null;
+        this.recipientForm = { name: '', position: '' };
+      } catch (error) {
+        console.error('Update error:', error);
+      }
+    },
+
+    async handleNewRecipientSubmit() {
+      try {
+        const response = await apiClient.post('/recipients', this.newRecipientForm);
+        console.log('New recipient response:', response);
+
         if (response.data) {
+          // Update the local recipients array with the new data
+          const newRecipient = response.data;
+          this.recipients = [...this.recipients, newRecipient];
+          
+          // Clear the form and close the modal
+          this.newRecipientForm = { name: '', position: '' };
+          this.showNewRecipientForm = false;
+
+          // Refresh the table to ensure consistency
           await this.fetchRecipients();
-          this.showUpdateConfirmModal = false;
-          this.showUpdateFormModal = false;
         }
       } catch (error) {
-        console.error('Error updating recipient:', error);
-        if (error.response) {
-          console.error('Server error:', error.response.data);
-        }
+        console.error('Create error:', error);
+        alert('Failed to create new recipient. Please try again.');
       }
+    },
+
+    // Add this new method
+    handleRecipientAdded(newRecipient) {
+      this.recipients.push(newRecipient);
+      this.$emit('recipients-updated', this.recipients);
     }
   }
 };

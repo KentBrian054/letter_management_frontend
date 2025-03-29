@@ -105,7 +105,7 @@
                       >
                         <option value="">Select Recipient</option>
                         <option 
-                          v-for="r in availableRecipients(index)" 
+                          v-for="r in recipientsList" 
                           :key="r.id" 
                           :value="r.id"
                         >
@@ -329,6 +329,7 @@ export default {
         recipients: [],
         content: ''
       },
+      localRecipients: [], // Add this for storing fetched recipients
       letterForm: {
         id: this.editMode && this.letterData ? this.letterData.id : Date.now().toString(),
         title: this.editMode && this.letterData ? this.letterData.title : '',
@@ -361,8 +362,8 @@ export default {
         name: '',
         position: ''
       },
-      recipientsList: [],
-      showConfirmModal: false
+      recipientsList: [], // We'll use only this for recipients
+      // Remove localRecipients as we don't need it
     };
   },
 
@@ -389,13 +390,45 @@ export default {
     async fetchRecipients() {
       try {
         const response = await apiClient.get('/recipients');
-        if (response?.data?.data) {
-          this.recipients = response.data.data;
+        console.log('Recipients API response:', response.data);
+        
+        if (Array.isArray(response.data)) {
+          this.recipientsList = response.data;
+        } else if (response.data.data && Array.isArray(response.data.data)) {
+          this.recipientsList = response.data.data;
         }
+        
+        console.log('Updated recipientsList:', this.recipientsList);
       } catch (error) {
         console.error('Error fetching recipients:', error);
       }
     },
+
+    updateRecipient(index, recipientId) {
+      const selectedRecipient = this.recipientsList.find(r => r.id === recipientId);
+      if (selectedRecipient) {
+        this.$set(this.letterForm.recipients, index, {
+          id: selectedRecipient.id,
+          name: selectedRecipient.name,
+          position: selectedRecipient.position
+        });
+        console.log('Updated recipient:', this.letterForm.recipients[index]);
+      }
+    },
+
+    async mounted() {
+        try {
+          const response = await apiClient.get('/recipients');
+          console.log('Recipients response:', response);
+          // Handle the direct response data since there's no nested data property
+          if (Array.isArray(response.data)) {
+            this.recipientsList = response.data;
+          }
+          console.log('Processed recipients:', this.recipientsList);
+        } catch (error) {
+          console.error('Error fetching recipients:', error);
+        }
+      },
 
     async handleUpdateSubmit() {
       try {
@@ -409,18 +442,6 @@ export default {
         this.showUpdateFormModal = false;
       } catch (error) {
         console.error('Update Error:', error);
-      }
-    },
-
-    updateRecipient(index, recipientId) {
-      const selectedRecipient = this.recipientsList.find(r => r.id === recipientId);
-      if (selectedRecipient) {
-        this.letterForm.recipients[index] = { 
-          id: selectedRecipient.id,
-          name: selectedRecipient.name,
-          position: selectedRecipient.position,
-          department: selectedRecipient.department
-        };
       }
     },
 

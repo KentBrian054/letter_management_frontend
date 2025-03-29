@@ -83,9 +83,13 @@ export default {
             'Content-Type': 'application/json',
             'Accept': 'application/json'
           },
-          timeout: 5000 // 5 second timeout
+          timeout: 5000
         });
-        this.$emit('save-recipient', response.data);
+        
+        // Emit both the new recipient and trigger a refresh
+        this.$emit('recipient-added', response.data);
+        this.$emit('refresh-recipients');
+        
         this.recipientForm = { name: '', department: '' };
         this.$emit('close');
       } catch (error) {
