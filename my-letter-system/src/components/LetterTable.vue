@@ -135,38 +135,31 @@
                     Delete
                   </span>
                 </button>
-                <!-- Replace the existing preview button with this dropdown -->
-                <div class="relative inline-block text-left">
+                <!-- Replace the dropdown with direct PDF actions -->
+                <div class="flex space-x-2">
                   <button 
-                    @click="$refs[`dropdown-${letter.id}`].classList.toggle('hidden')"
+                    @click="previewLetter(letter)"
                     class="p-2 rounded-lg text-green-600 hover:text-green-900 hover:bg-green-100/50 transition-colors group relative"
                   >
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
                       <circle cx="12" cy="12" r="3" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
                     </svg>
+                    <span class="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-700 text-white text-xs px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
+                      Preview PDF
+                    </span>
                   </button>
-                  
-                  <!-- Dropdown menu -->
-                  <div 
-                    :ref="`dropdown-${letter.id}`"
-                    class="hidden absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50"
+                  <button 
+                    @click="downloadLetter(letter)"
+                    class="p-2 rounded-lg text-green-600 hover:text-green-900 hover:bg-green-100/50 transition-colors group relative"
                   >
-                    <div class="py-1">
-                      <button
-                        @click="previewLetter(letter)"
-                        class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        Preview PDF
-                      </button>
-                      <button
-                        @click="downloadLetter(letter)"
-                        class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        Download PDF
-                      </button>
-                    </div>
-                  </div>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    <span class="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-700 text-white text-xs px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
+                      Download PDF
+                    </span>
+                  </button>
                 </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">{{ letter.title }}</td>
@@ -342,6 +335,33 @@
         </div>
       </div>
     </div>
+
+    <!-- PDF Preview Modal -->
+    <div v-if="showPdfPreview" class="fixed inset-0 z-50 overflow-hidden">
+      <div class="fixed inset-0 bg-gray-500/75 backdrop-blur-sm transition-opacity"></div>
+      <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="relative bg-white rounded-lg shadow-xl w-[90%] h-[90vh]">
+          <!-- Modal header -->
+          <div class="absolute top-0 right-0 p-4 z-10">
+            <button
+              @click="closePdfPreview"
+              class="bg-white rounded-full p-2 hover:bg-gray-100"
+            >
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          
+          <!-- PDF Viewer -->
+          <iframe
+            :src="currentPdfUrl"
+            class="w-full h-full rounded-lg"
+            type="application/pdf"
+          ></iframe>
+        </div>
+      </div>
+    </div>
   </div> <!-- Proper closing div for main container -->
 </template>
 
@@ -349,6 +369,7 @@
 import axios from 'axios';
 import axiosRetry from 'axios-retry';
 import LetterForm from './LetterForm.vue';
+import * as pdfjsLib from 'pdfjs-dist';
 
 // Keep the apiClient configuration
 const apiClient = axios.create({
@@ -379,6 +400,9 @@ axiosRetry(apiClient, {
   shouldResetTimeout: true
 });
 
+// Add this line after your imports
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+
 export default {
   components: {
     LetterForm
@@ -408,6 +432,10 @@ export default {
       searchRecipient: '',
       isFetching: false,       // Moved inside data()
       lastRequestTime: 0,      // Moved inside data()
+      // Remove these properties as they're no longer needed
+      dropdownStates: {},
+      showPdfPreview: false,
+      currentPdfUrl: null,
       networkStatus: false
     };
   },
@@ -460,7 +488,6 @@ export default {
       await this.fetchRecipients();
     } catch (error) {
       console.error('Error during component initialization:', error);
-      // Removed alert dialog, only logging to console
     }
   },
   methods: {
@@ -631,10 +658,61 @@ export default {
       this.currentPage = page;
     },  // Add comma here
     
+    toggleDropdown(letterId) {
+      // Create reactive state if it doesn't exist
+      if (!this.dropdownStates[letterId]) {
+        this.$set(this.dropdownStates, letterId, false);
+      }
+      
+      // Close all other dropdowns first
+      Object.keys(this.dropdownStates).forEach(key => {
+        if (key !== letterId.toString()) {
+          this.$set(this.dropdownStates, key, false);
+        }
+      });
+      
+      // Toggle the current dropdown
+      this.$set(this.dropdownStates, letterId, !this.dropdownStates[letterId]);
+
+      // Close dropdown when clicking preview or download
+      if (this.dropdownStates[letterId]) {
+        this.$nextTick(() => {
+          const handleClickOutside = (event) => {
+            if (!event.target.closest('.relative.inline-block')) {
+              this.$set(this.dropdownStates, letterId, false);
+              document.removeEventListener('click', handleClickOutside);
+            }
+          };
+          document.addEventListener('click', handleClickOutside);
+        });
+      }
+    },
+
     previewLetter(letter) {
       try {
-        // Open PDF in new window/tab
-        window.open(`http://192.168.8.40:8000/api/letters/${letter.id}/preview`, '_blank');
+        // First try to get the PDF blob
+        apiClient.get(`/letters/${letter.id}/preview`, {
+          responseType: 'blob'
+        }).then(response => {
+          // Create blob URL and open in new window
+          const blob = new Blob([response.data], { type: 'application/pdf' });
+          const blobUrl = window.URL.createObjectURL(blob);
+          
+          // Open in new window
+          const newWindow = window.open();
+          if (newWindow) {
+            newWindow.document.write(`
+              <iframe 
+                src="${blobUrl}" 
+                style="width: 100%; height: 100vh; border: none;"
+                type="application/pdf"
+              ></iframe>
+            `);
+          }
+        }).catch(error => {
+          console.error('Error previewing letter:', error);
+          alert('Failed to preview PDF. Please try again.');
+        });
       } catch (error) {
         console.error('Error previewing letter:', error);
       }
@@ -646,7 +724,6 @@ export default {
           responseType: 'blob'
         });
         
-        // Create blob link to download
         const url = window.URL.createObjectURL(new Blob([response.data]));
         const link = document.createElement('a');
         link.href = url;
@@ -654,8 +731,17 @@ export default {
         document.body.appendChild(link);
         link.click();
         link.remove();
+        window.URL.revokeObjectURL(url);
       } catch (error) {
         console.error('Error downloading letter:', error);
+      }
+    },
+
+    closePdfPreview() {
+      this.showPdfPreview = false;
+      if (this.currentPdfUrl) {
+        URL.revokeObjectURL(this.currentPdfUrl);
+        this.currentPdfUrl = null;
       }
     },
   }

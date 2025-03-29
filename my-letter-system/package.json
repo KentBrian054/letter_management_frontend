@@ -10,10 +10,12 @@
   },
   "dependencies": {
     "@kangc/v-md-editor": "^2.3.18",
+    "@pdftron/webviewer": "^11.3.0",
     "axios": "^1.6.7",
     "axios-retry": "^4.0.0",
     "codemirror": "^5.65.0",
     "marked": "^4.0.0",
+    "pdfjs-dist": "^5.0.375",
     "prismjs": "^1.29.0",
     "vue": "^3.4.21"
   },
