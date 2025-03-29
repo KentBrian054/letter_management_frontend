@@ -135,19 +135,39 @@
                     Delete
                   </span>
                 </button>
-                <!-- Improved Preview Button with Eye Icon -->
-                <button 
-                  @click="previewLetter(letter)" 
-                  class="p-2 rounded-lg text-green-600 hover:text-green-900 hover:bg-green-100/50 transition-colors group relative"
-                >
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                    <circle cx="12" cy="12" r="3" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
-                  </svg>
-                  <span class="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-700 text-white text-xs px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
-                    Preview
-                  </span>
-                </button>
+                <!-- Replace the existing preview button with this dropdown -->
+                <div class="relative inline-block text-left">
+                  <button 
+                    @click="$refs[`dropdown-${letter.id}`].classList.toggle('hidden')"
+                    class="p-2 rounded-lg text-green-600 hover:text-green-900 hover:bg-green-100/50 transition-colors group relative"
+                  >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                      <circle cx="12" cy="12" r="3" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+                    </svg>
+                  </button>
+                  
+                  <!-- Dropdown menu -->
+                  <div 
+                    :ref="`dropdown-${letter.id}`"
+                    class="hidden absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50"
+                  >
+                    <div class="py-1">
+                      <button
+                        @click="previewLetter(letter)"
+                        class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Preview PDF
+                      </button>
+                      <button
+                        @click="downloadLetter(letter)"
+                        class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Download PDF
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">{{ letter.title }}</td>
               <td class="px-6 py-4 whitespace-nowrap">{{ formatDate(letter.date) }}</td>
@@ -612,9 +632,31 @@ export default {
     },  // Add comma here
     
     previewLetter(letter) {
-      // You can implement the preview functionality here
-      console.log('Preview letter:', letter);
-      // For example, you could open a new modal or navigate to a preview page
+      try {
+        // Open PDF in new window/tab
+        window.open(`http://192.168.8.40:8000/api/letters/${letter.id}/preview`, '_blank');
+      } catch (error) {
+        console.error('Error previewing letter:', error);
+      }
+    },
+
+    async downloadLetter(letter) {
+      try {
+        const response = await apiClient.get(`/letters/${letter.id}/download`, {
+          responseType: 'blob'
+        });
+        
+        // Create blob link to download
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `letter-${letter.id}.pdf`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      } catch (error) {
+        console.error('Error downloading letter:', error);
+      }
     },
   }
 };
