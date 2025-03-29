@@ -171,11 +171,12 @@
                 <div class="flex flex-wrap gap-1">
                   <template v-if="letter.recipients">
                     <span 
-                      v-for="(recipient, index) in JSON.parse(letter.recipients)" 
-                      :key="index"
+                      v-for="recipient in (typeof letter.recipients === 'string' ? 
+                        JSON.parse(letter.recipients) : letter.recipients)" 
+                      :key="recipient"
                       class="px-2 py-1 bg-gray-100 rounded-md text-sm"
                     >
-                      {{ recipient.name }}
+                      {{ typeof recipient === 'object' ? recipient.name : recipient }}
                     </span>
                   </template>
                   <span v-else class="text-gray-500">No recipients</span>
@@ -269,6 +270,7 @@
             :edit-mode="false"
             @close="closeLetterForm"
             @save-letter="handleLetterSaved"
+            @refresh-letters="fetchLetters"
           />
         </div>
       </div>
@@ -407,7 +409,7 @@ export default {
   components: {
     LetterForm
   },
-  emits: ['refresh-letters'], // Add this line to declare the emit
+  emits: ['refresh-letters'],
   data() {
     return {
       letters: [],
@@ -544,18 +546,10 @@ export default {
           return;
         }
 
-        const processedData = {
-          ...letterData,
-          recipients: Array.isArray(letterData.recipients) ? 
-            JSON.stringify(letterData.recipients) : 
-            letterData.recipients,
-          date: this.formatDateForInput(letterData.date)
-        };
-
         if (letterData.id) {
-          await this.updateLetter(processedData);
+          await this.updateLetter(letterData);
         } else {
-          await this.addLetter(processedData);
+          await this.addLetter(letterData);
         }
         
         this.showLetterForm = false;
@@ -563,18 +557,53 @@ export default {
         await this.fetchLetters();
       } catch (error) {
         console.error('Error saving letter:', error);
+        // Show error to user
+        alert(error.response?.data?.message || 'Failed to save letter. Please check all required fields.');
       }
     },
     async addLetter(letterData) {
       try {
-        const response = await apiClient.post('/letters', letterData);
+        // Format recipients to ensure they are strings
+        const recipients = Array.isArray(letterData.recipients) 
+          ? letterData.recipients.map(recipient => 
+              typeof recipient === 'object' ? recipient.name : String(recipient)
+            )
+          : [String(letterData.recipients)];
+
+        // Format the data before sending
+        const formattedData = {
+          title: letterData.title,
+          subject: letterData.subject,
+          type: letterData.type,
+          date: this.formatDateForInput(letterData.date),
+          recipients: recipients,
+          content: letterData.content || '',
+          sender_name: letterData.sender_name,
+          sender_position: letterData.sender_position
+        };
+
+        console.log('Sending letter data:', formattedData);
+
+        const response = await apiClient.post('/letters', formattedData);
+        
         if (response.data.success) {
           await this.fetchLetters();
           this.showLetterForm = false;
           this.currentPage = 1;
+          this.$emit('refresh-letters');
+        } else {
+          console.error('Server response indicates failure:', response.data);
+          throw new Error(response.data.message || 'Failed to add letter');
         }
       } catch (error) {
         console.error('Error adding letter:', error);
+        if (error.response?.data?.errors) {
+          const errorMessages = Object.values(error.response.data.errors)
+            .flat()
+            .join('\n');
+          alert(errorMessages);
+        }
+        throw error;
       }
     },
     async fetchLetters() {
