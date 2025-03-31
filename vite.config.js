@@ -9,7 +9,7 @@ export default defineConfig({
     open: true,
     proxy: {
       '/api': {
-        target: 'http://192.168.5.15:8000',
+        target: 'http://192.168.8.36:8000',
         changeOrigin: true,
         secure: false,
         timeout: 30000,

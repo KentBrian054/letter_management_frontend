@@ -155,17 +155,25 @@
                 <span v-if="errors.date" class="text-sm text-red-500 mt-1">{{ errors.date }}</span>
               </div>
 
-              <!-- Replace the editor section in your template -->
-              <!-- Content Section -->
+              <!-- In the content section -->
               <div class="space-y-2">
                 <label class="font-medium block text-lg">Content:</label>
                 <div class="relative border rounded-md">
-                  <ckeditor
+                  <QuillEditor
                     v-model="letterForm.content"
-                    :editor="editor"
-                    :config="editorConfig"
-                    @ready="onEditorReady"
+                    contentType="html"
+                    theme="snow"
+                    :toolbar="[
+                      ['bold', 'italic', 'underline', 'strike'],
+                      ['blockquote', 'code-block'],
+                      [{ 'header': 1 }, { 'header': 2 }],
+                      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                      [{ 'align': [] }],
+                      ['clean']
+                    ]"
+                    class="h-[400px]"
                     :class="{'border-red-500': errors.content}"
+                    :options="editorOptions"
                   />
                 </div>
                 <span v-if="errors.content" class="text-sm text-red-500">{{ errors.content }}</span>
@@ -265,28 +273,46 @@
 
 <script>
 import axios from 'axios';
-import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
+import { QuillEditor } from '@vueup/vue-quill'
+import '@vueup/vue-quill/dist/vue-quill.snow.css'
+import { nextTick } from 'vue'
 
-// Update the apiClient configuration
+// Update axios configuration with your IP address
 const apiClient = axios.create({
-  baseURL: 'http://192.168.5.95:8000/api',
-  timeout: 60000,
+  baseURL: 'http://192.168.8.36:8000/api',  // Changed to your network IP
   headers: {
     'Content-Type': 'application/json',
-    'Accept': 'application/json'
+    'Accept': 'application/json',
+    'Access-Control-Allow-Origin': '*'
   },
-  withCredentials: false  // Change to false
+  timeout: 15000
 });
+
+// Add interceptor for better error handling
+apiClient.interceptors.response.use(
+  response => response,
+  error => {
+    console.error('API Error:', error);
+    if (error.code === 'ERR_NETWORK') {
+      alert('Cannot connect to server. Please check if the backend is running.');
+    }
+    return Promise.reject(error);
+  }
+);
 
 export default {
   name: 'LetterForm',
+  components: {
+    QuillEditor
+  },
   data() {
     return {
-      editor: ClassicEditor,
-      editorConfig: {
-        placeholder: 'Write your content here...',
-        toolbar: ['heading', '|', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', '|', 'undo', 'redo']
-      },
+      // Remove editor and editorConfig
+      // editor: ClassicEditor,
+      // editorConfig: {
+      //   placeholder: 'Write your content here...',
+      //   toolbar: ['heading', '|', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', '|', 'undo', 'redo']
+      // },
       formData: {
         title: '',
         subject: '',
@@ -362,15 +388,28 @@ export default {
 
     async fetchRecipients() {
       try {
-        const response = await apiClient.get('/recipients');
-        if (Array.isArray(response.data)) {
-          this.recipientsList = response.data;
-        } else if (response.data.data && Array.isArray(response.data.data)) {
-          this.recipientsList = response.data.data;
+        // Add error handling and retry logic
+        const response = await apiClient.get('/recipients', {
+          validateStatus: function (status) {
+            return status >= 200 && status < 500;
+          }
+        });
+        
+        if (response.status === 200) {
+          if (Array.isArray(response.data)) {
+            this.recipientsList = response.data;
+          } else if (response.data && Array.isArray(response.data.data)) {
+            this.recipientsList = response.data.data;
+          }
+        } else {
+          console.error('Server returned status:', response.status);
+          this.recipientsList = [];
         }
       } catch (error) {
         console.error('Error fetching recipients:', error);
         this.recipientsList = [];
+        // You might want to show an error message to the user
+        alert('Unable to fetch recipients. Please check your connection and try again.');
       }
     },
 
@@ -488,12 +527,18 @@ export default {
   },  // Close methods object with comma
 
   mounted() {
-    this.initEditor();
     this.fetchRecipients();
+    
+    // Modern approach to handle editor initialization
+    nextTick(() => {
+      const editor = document.querySelector('.ql-editor');
+      if (editor) {
+        editor.style.height = '350px';
+        editor.style.overflowY = 'auto';
+      }
+    });
   },
-
-  emits: ['save-letter', 'update-letter', 'close']
-};
+}
 </script>
 
 <style>
@@ -518,5 +563,36 @@ export default {
 }
 .ck.ck-editor__main > .ck-editor__editable {
   background-color: white;
+}
+/* Update QuillEditor styles */
+.quill-editor {
+  height: 400px !important;
+  margin-bottom: 20px;
+}
+
+.ql-container {
+  height: auto !important;
+  min-height: 350px;
+}
+
+.ql-editor {
+  height: 350px !important;
+  overflow-y: auto !important;
+}
+
+.ql-container {
+  position: relative !important;
+  height: auto !important;
+}
+.ql-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: white;
+}
+
+/* Remove the deprecated styles */
+.ql-container {
+  position: static !important;
 }
 </style>

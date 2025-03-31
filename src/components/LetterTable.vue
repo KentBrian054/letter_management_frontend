@@ -5,7 +5,7 @@
     <!-- Header and Add New Letter button -->
     <div class="flex justify-end items-center mb-6">
       <button 
-        @click="showLetterForm = true" 
+        @click="handleNewLetterClick" 
         class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md flex items-center gap-2"
       >
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -14,83 +14,63 @@
         New
       </button>
     </div>
-
-    <!-- Combined Search and Filter Bar -->
-    <div class="mb-6 bg-white rounded-lg shadow px-4 py-4 w-full"> <!-- Changed max-w-full to w-full -->
-      <div class="flex flex-wrap gap-1 md:flex-nowrap">
+    <!-- Search and Filter Bar -->
+    <div class="mb-6 bg-white rounded-lg shadow p-4">
+      <div class="flex flex-wrap gap-4 items-center">
         <!-- Title Search -->
         <div class="flex-1 min-w-[200px]">
-          <div class="relative">
-            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg class="h-4 w-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
-              </svg>
-            </div>
-            <input
-              v-model="searchQuery"
-              type="text"
-              placeholder="Search by title..."
-              class="w-full border rounded-md pl-8 pr-4 py-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Search by title..."
+            class="w-full px-4 py-2 border rounded-md"
+          />
         </div>
 
-        <!-- Type Filter and Date Range -->
-        <!-- Remove this misplaced td element -->
-        <div class="flex items-center gap-4 flex-nowrap">
-          <select v-model="selectedType" class="border rounded-md px-4 py-2 w-32 mr-2">
+        <!-- Subject Search -->
+        <div class="flex-1 min-w-[200px]">
+          <input
+            v-model="searchSubject"
+            type="text"
+            placeholder="Search by subject..."
+            class="w-full px-4 py-2 border rounded-md"
+          />
+        </div>
+
+        <!-- Recipient Search -->
+        <div class="flex-1 min-w-[200px]">
+          <input
+            v-model="searchRecipient"
+            type="text"
+            placeholder="Search by recipient..."
+            class="w-full px-4 py-2 border rounded-md"
+          />
+        </div>
+
+        <!-- Type Filter -->
+        <div class="w-[150px]">
+          <select
+            v-model="selectedType"
+            class="w-full px-4 py-2 border rounded-md"
+          >
             <option value="">All Types</option>
             <option value="memo">Memo</option>
             <option value="business-letter">Business Letter</option>
           </select>
-          <div class="flex gap-2">
-            <input
-              type="date"
-              :value="formatDateForInput(dateRange.start)"
-              @input="e => setDateRange(e.target.value, dateRange.end)"
-              class="border rounded-md px-3 py-2 w-40 min-w-[160px]"
-            />
-            <input
-              type="date"
-              :value="formatDateForInput(dateRange.end)"
-              @input="e => setDateRange(dateRange.start, e.target.value)"
-              class="border rounded-md px-3 py-2 w-40 min-w-[160px]"
-            />
-          </div>
         </div>
 
-        <!-- Subject Search -->
-        <div class="w-full max-w-[250px] flex-grow min-w-[200px]"> <!-- Increased max-width and min-width -->
-          <div class="relative">
-            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg class="h-4 w-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M9.243 3.03a1 1 0 01.727 1.213L9.53 6h2.94l.56-2.243a1 1 0 111.94.486L14.53 6H18a1 1 0 110 2h-3.97l-1 4H15a1 1 0 110 2h-2.47l-.56 2.242a1 1 0 11-1.94-.485L10.47 14H7.53l-.56 2.242a1 1 0 11-1.94-.485L5.47 14H2a1 1 0 110-2h3.97l1-4H5a1 1 0 110-2h2.47l.56-2.243a1 1 0 011.213-.727zM9.03 8l-1 4h2.938l1-4H9.031z" clip-rule="evenodd" />
-              </svg>
-            </div>
-            <input
-              v-model="searchSubject"
-              type="text"
-              placeholder="Search by subject..."
-              class="w-full border rounded-md pl-8 pr-4 py-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-        </div>
-
-        <!-- Recipient Search -->
-        <div class="w-full max-w-[300px] flex-grow min-w-[200px]"> <!-- Adjusted max-width to 300px -->
-          <div class="relative">
-            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg class="h-4 w-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
-              </svg>
-            </div>
-            <input
-              v-model="searchRecipient"
-              type="text"
-              placeholder="Search by recipient..."
-              class="w-full border rounded-md pl-8 pr-4 py-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
+        <!-- Date Range Filter -->
+        <div class="flex gap-2">
+          <input
+            type="date"
+            v-model="dateRange.start"
+            class="w-[160px] px-4 py-2 border rounded-md"
+          />
+          <input
+            type="date"
+            v-model="dateRange.end"
+            class="w-[160px] px-4 py-2 border rounded-md"
+          />
         </div>
       </div>
     </div>
@@ -111,7 +91,6 @@
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
             <template v-if="letters.length">
-              <!-- Update the table row in the template -->
               <tr v-for="letter in paginatedLetters" :key="letter.id">
                 <td class="px-6 py-4 whitespace-nowrap flex space-x-3">
                   <button 
@@ -136,7 +115,6 @@
                       Delete
                     </span>
                   </button>
-                  <!-- Replace the dropdown with direct PDF actions -->
                   <div class="flex space-x-2">
                     <button 
                       @click="previewLetter(letter)"
@@ -167,7 +145,6 @@
                 <td class="px-6 py-4 whitespace-nowrap">{{ formatDate(letter.date) }}</td>
                 <td class="px-6 py-4 whitespace-nowrap">{{ letter.type }}</td>
                 <td class="px-6 py-4 whitespace-nowrap">{{ letter.subject }}</td>
-                <!-- Update the recipients column in the table -->
                 <td class="px-6 py-4">
                   <div class="flex flex-wrap gap-1">
                     <template v-if="letter.recipients">
@@ -194,181 +171,307 @@
         </table>
       </div>
     </div>
-
-    <!-- Remove the style tag from here -->
-
-    <!-- Pagination for Letters -->
-    <div class="bg-white px-4 py-3 flex items-center justify-center border-t border-gray-200">
-      <nav class="flex items-center space-x-1 mt-2">
-        <button 
-          @click="previousPage" 
-          :disabled="currentPage === 1"
-          class="px-2 py-1 border rounded-md text-sm font-medium"
-          :class="currentPage === 1 ? 'text-gray-300 cursor-default' : 'text-gray-700 hover:bg-gray-50'"
-        >
-          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
-          </svg>
-        </button>
-        <template v-for="page in displayedPages" :key="page">
-          <button
-            @click="goToPage(page)"
-            class="px-3 py-1 border rounded-md text-sm font-medium"
-            :class="page === currentPage ? 'bg-blue-500 text-white border-blue-500' : 'text-gray-700 hover:bg-gray-50'"
-          >
-            {{ page }}
-          </button>
-        </template>
-        <button 
-          @click="nextPage" 
-          :disabled="currentPage === totalPages"
-          class="px-2 py-1 border rounded-md text-sm font-medium"
-          :class="currentPage === totalPages ? 'text-gray-300 cursor-default' : 'text-gray-700 hover:bg-gray-50'"
-        >
-          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
-          </svg>
-        </button>
-      </nav>
-    </div>
-    <!-- </div> Closing div for bg-white rounded-lg shadow overflow-hidden -->
-
-    <!-- Edit Letter Modal -->
-    <div v-if="showEditModal" class="fixed inset-0 z-50 overflow-hidden">
-      <div class="fixed inset-0 bg-gray-500/75 backdrop-blur-sm transition-opacity" style="backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);"></div>
-      <div class="flex items-center justify-center min-h-screen p-4 backdrop-blur-sm">
-        <div class="relative bg-white rounded-lg shadow-xl w-[85%] h-[85vh] max-w-[1200px]">
-          <!-- Fixed header -->
-          <div class="absolute top-0 right-0 bg-white px-6 py-3 border-b z-10 flex justify-end gap-3">
-            <button
-              type="button"
-              @click="handleLetterSaved(currentLetter)"
-              class="px-4 py-1.5 bg-green-500 text-white rounded-md hover:bg-green-600 flex items-center gap-2"
-            >
-              Update
-            </button>
-            <button
-              type="button"
-              @click="closeEditModal"
-              class="px-4 py-1.5 border border-gray-300 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50"
-            >
-              Cancel
-            </button>
-          </div>
-
-          <!-- Modal content -->
-          <!-- Edit Letter Modal -->
-          <div class="h-full overflow-y-auto pt-16 px-6 pb-6">
-            <letter-form 
-              :letter-data="currentLetter"
-              :edit-mode="true"
-              @save-letter="handleLetterSaved"
-              @close="closeEditModal"
-            />
-          </div>
-          
-          <!-- And update the other LetterForm instance -->
-          <LetterForm
-            v-if="showLetterForm"
-            :letter-data="selectedLetter || {}"
-            :edit-mode="false"
-            @close="closeLetterForm"
-            @save-letter="handleLetterSaved"
-            @refresh-letters="fetchLetters"
-          />
-        </div>
-      </div>
-    </div>
-
-    <!-- Delete Confirmation Modal -->
-    <div v-if="showDeleteConfirmModal" class="fixed inset-0 z-50 overflow-hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-      <div class="fixed inset-0 bg-gray-500/75 backdrop-blur-sm transition-opacity"></div>
-      <div class="flex items-center justify-center min-h-screen p-4 backdrop-blur-sm">
-        <div class="relative bg-white rounded-lg shadow-xl w-full max-w-md">
-          <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-            <div class="sm:flex sm:items-start">
-              <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
-                <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                </svg>
-              </div>
-              <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                <h3 class="text-lg leading-6 font-medium text-gray-900">Confirm Deletion</h3>
-                <div class="mt-2">
-                  <p class="text-sm text-gray-500">Are you sure you want to delete this letter?</p>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-            <button
-              type="button"
-              @click="deleteLetter(confirmDeleteId)"
-              class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm"
-            >
-              Delete
-            </button>
-            <button
-              type="button"
-              @click="showDeleteConfirmModal = false"
-              class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Letter Form Modal -->
-    <!-- Update the LetterForm component usage -->
-    <LetterForm
-      v-if="showLetterForm"
-      :letter-data="selectedLetter || {}"
-      :edit-mode="false"
-      @close="closeLetterForm"
-      @save-letter="handleLetterSaved"
-    />
-
-    <!-- Delete Success Message -->
-    <div v-if="showDeleteSuccess" class="fixed inset-0 flex items-center justify-center">
-      <div class="bg-white rounded-lg p-6 shadow-xl">
-        <div class="text-center">
-          <svg class="mx-auto h-12 w-12 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-          </svg>
-          <h3 class="mt-2 text-lg font-medium text-gray-900">Letter deleted successfully!</h3>
-        </div>
-      </div>
-    </div>
-
-    <!-- PDF Preview Modal -->
-    <div v-if="showPdfPreview" class="fixed inset-0 z-50 overflow-hidden">
-      <div class="fixed inset-0 bg-gray-500/75 backdrop-blur-sm transition-opacity"></div>
-      <div class="flex items-center justify-center min-h-screen p-4">
-        <div class="relative bg-white rounded-lg shadow-xl w-[90%] h-[90vh]">
-          <!-- Modal header -->
-          <div class="absolute top-0 right-0 p-4 z-10">
-            <button
-              @click="closePdfPreview"
-              class="bg-white rounded-full p-2 hover:bg-gray-100"
-            >
+    <!-- After the table -->
+      
+      <!-- Update Letter Modal -->
+      <div v-if="showEditModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center">
+        <div class="bg-white p-6 rounded-lg shadow-xl max-w-4xl w-full">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-medium">Update Letter</h3>
+            <button @click="closeEditModal" class="text-gray-500 hover:text-gray-700">
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
-          
-          <!-- PDF Viewer -->
-          <iframe
-            :src="currentPdfUrl"
-            class="w-full h-full rounded-lg"
-            type="application/pdf"
-          ></iframe>
+      
+          <form @submit.prevent="handleUpdate" class="space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+              <!-- Title -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700">Title</label>
+                <input
+                  v-model="currentLetter.title"
+                  type="text"
+                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  required
+                />
+              </div>
+      
+              <!-- Type -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700">Type</label>
+                <select
+                  v-model="currentLetter.type"
+                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  required
+                >
+                  <option value="memo">Memo</option>
+                  <option value="business-letter">Business Letter</option>
+                </select>
+              </div>
+      
+              <!-- Subject -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700">Subject</label>
+                <input
+                  v-model="currentLetter.subject"
+                  type="text"
+                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  required
+                />
+              </div>
+      
+              <!-- Date -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700">Date</label>
+                <input
+                  v-model="currentLetter.date"
+                  type="date"
+                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  required
+                />
+              </div>
+      
+              <!-- Recipients -->
+              <div class="col-span-2">
+                <label class="block text-sm font-medium text-gray-700">Recipients</label>
+                <select
+                  v-model="currentLetter.recipients"
+                  multiple
+                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  required
+                >
+                  <option v-for="recipient in recipients" :key="recipient.id" :value="recipient.name">
+                    {{ recipient.name }}
+                  </option>
+                </select>
+              </div>
+      
+              <!-- Content -->
+              <div class="col-span-2">
+                <label class="block text-sm font-medium text-gray-700">Content</label>
+                <textarea
+                  v-model="currentLetter.content"
+                  rows="4"
+                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  required
+                ></textarea>
+              </div>
+      
+              <!-- Sender Name -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700">Sender Name</label>
+                <input
+                  v-model="currentLetter.sender_name"
+                  type="text"
+                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  required
+                />
+              </div>
+      
+              <!-- Sender Position -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700">Sender Position</label>
+                <input
+                  v-model="currentLetter.sender_position"
+                  type="text"
+                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  required
+                />
+              </div>
+            </div>
+      
+            <div class="flex justify-end space-x-3 mt-6">
+              <button
+                type="button"
+                @click="closeEditModal"
+                class="px-4 py-2 border rounded-md hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+              >
+                Update Letter
+              </button>
+            </div>
+          </form>
         </div>
       </div>
+
+    <!-- Pagination -->
+    <div class="mt-4 flex items-center justify-between">
+      <!-- ... pagination content ... -->
     </div>
-  </div> <!-- Single closing div for main container -->
+  </div>  <!-- Add this closing div -->
+
+  <!-- Letter Form Modal -->
+  <LetterForm
+    v-if="showLetterForm"
+    :letter="selectedLetter"
+    @close="closeLetterForm"
+    @save="handleLetterSaved"
+  />
+
+  <!-- Update Letter Modal -->
+  <div v-if="showEditModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center">
+    <div class="bg-white p-6 rounded-lg shadow-xl max-w-4xl w-full">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-medium">Update Letter</h3>
+        <button @click="closeEditModal" class="text-gray-500 hover:text-gray-700">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+  
+      <form @submit.prevent="handleUpdate" class="space-y-4">
+        <div class="grid grid-cols-2 gap-4">
+          <!-- Title -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Title</label>
+            <input
+              v-model="currentLetter.title"
+              type="text"
+              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              required
+            />
+          </div>
+  
+          <!-- Type -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Type</label>
+            <select
+              v-model="currentLetter.type"
+              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              required
+            >
+              <option value="memo">Memo</option>
+              <option value="business-letter">Business Letter</option>
+            </select>
+          </div>
+  
+          <!-- Subject -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Subject</label>
+            <input
+              v-model="currentLetter.subject"
+              type="text"
+              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              required
+            />
+          </div>
+  
+          <!-- Date -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Date</label>
+            <input
+              v-model="currentLetter.date"
+              type="date"
+              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              required
+            />
+          </div>
+  
+          <!-- Recipients -->
+          <div class="col-span-2">
+            <label class="block text-sm font-medium text-gray-700">Recipients</label>
+            <select
+              v-model="currentLetter.recipients"
+              multiple
+              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              required
+            >
+              <option v-for="recipient in recipients" :key="recipient.id" :value="recipient.name">
+                {{ recipient.name }}
+              </option>
+            </select>
+          </div>
+  
+          <!-- Content -->
+          <div class="col-span-2">
+            <label class="block text-sm font-medium text-gray-700">Content</label>
+            <textarea
+              v-model="currentLetter.content"
+              rows="4"
+              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              required
+            ></textarea>
+          </div>
+  
+          <!-- Sender Name -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Sender Name</label>
+            <input
+              v-model="currentLetter.sender_name"
+              type="text"
+              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              required
+            />
+          </div>
+  
+          <!-- Sender Position -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Sender Position</label>
+            <input
+              v-model="currentLetter.sender_position"
+              type="text"
+              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              required
+            />
+          </div>
+        </div>
+  
+        <div class="flex justify-end space-x-3 mt-6">
+          <button
+            type="button"
+            @click="closeEditModal"
+            class="px-4 py-2 border rounded-md hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+          >
+            Update Letter
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Delete Confirmation Modal -->
+  <div v-if="showDeleteConfirmModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center">
+    <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full">
+      <h3 class="text-lg font-medium mb-4">Confirm Delete</h3>
+      <p class="text-gray-600 mb-6">Are you sure you want to delete this letter? This action cannot be undone.</p>
+      <div class="flex justify-end space-x-3">
+        <button
+          @click="showDeleteConfirmModal = false"
+          class="px-4 py-2 border rounded-md hover:bg-gray-50"
+        >
+          Cancel
+        </button>
+        <button
+          @click="deleteLetter(confirmDeleteId)"
+          class="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+        >
+          Delete
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Success Message -->
+  <div
+    v-if="showDeleteSuccess"
+    class="fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-md shadow-lg"
+  >
+    Letter deleted successfully
+  </div>
 </template>
 
 <script>
@@ -379,7 +482,7 @@ import * as pdfjsLib from 'pdfjs-dist';
 
 // Keep the apiClient configuration
 const apiClient = axios.create({
-  baseURL: 'http://192.168.5.95:8000/api',  // Changed baseURL to point to main API endpoint
+  baseURL: 'http://192.168.8.36:8000/api',  // Update this line to match LetterForm.vue
   timeout: 60000,
   headers: {
     'Content-Type': 'application/json',
@@ -423,8 +526,7 @@ export default {
       showDeleteConfirmModal: false,
       showDeleteSuccess: false,
       confirmDeleteId: null,
-      currentLetter: null,
-      selectedLetter: null,  // Add this line
+      selectedLetter: null,
       currentPage: 1,
       perPage: 10,
       searchQuery: '',
@@ -527,6 +629,11 @@ export default {
       this.showEditModal = false;
       this.currentLetter = null;
     },
+    handleNewLetterClick() {
+      this.selectedLetter = null;
+      this.showLetterForm = true;
+    },
+
     closeLetterForm() {
       this.showLetterForm = false;
       this.selectedLetter = null;
