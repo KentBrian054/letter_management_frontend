@@ -155,24 +155,17 @@
                 <span v-if="errors.date" class="text-sm text-red-500 mt-1">{{ errors.date }}</span>
               </div>
 
+              <!-- Replace the editor section in your template -->
               <!-- Content Section -->
               <div class="space-y-2">
                 <label class="font-medium block text-lg">Content:</label>
-                <div class="relative h-[400px] border rounded-md">
-                  <md-editor 
+                <div class="relative border rounded-md">
+                  <ckeditor
                     v-model="letterForm.content"
+                    :editor="editor"
+                    :config="editorConfig"
+                    @ready="onEditorReady"
                     :class="{'border-red-500': errors.content}"
-                    height="400px"
-                    language="en-US"
-                    :toolbars="[
-                      'bold', 'underline', 'italic', 'strikethrough',
-                      '-',
-                      'title', 'quote', 'unorderedList', 'orderedList',
-                      '-',
-                      'link', 'image', 'table',
-                      '-',
-                      'preview', 'fullscreen'
-                    ]"
                   />
                 </div>
                 <span v-if="errors.content" class="text-sm text-red-500">{{ errors.content }}</span>
@@ -186,21 +179,23 @@
                     <label class="text-base font-medium">Name</label>
                     <input
                       type="text"
-                      v-model="letterForm.sender.name"
-                      :class="{'border-red-500': errors.senderName}"
+                      v-model="letterForm.sender_name"
+                      :class="{'border-red-500': errors.sender_name}"
+                      placeholder="Enter sender's name"
                       class="w-full border rounded-md px-4 py-2"
                     />
-                    <span v-if="errors.senderName" class="text-sm text-red-500">{{ errors.senderName }}</span>
+                    <span v-if="errors.sender_name" class="text-sm text-red-500">{{ errors.sender_name }}</span>
                   </div>
                   <div class="flex-1 space-y-2">
                     <label class="text-base font-medium">Position/Title</label>
                     <input
                       type="text"
-                      v-model="letterForm.sender.position"
-                      :class="{'border-red-500': errors.senderPosition}"
+                      v-model="letterForm.sender_position"
+                      :class="{'border-red-500': errors.sender_position}"
+                      placeholder="Enter sender's position"
                       class="w-full border rounded-md px-4 py-2"
                     />
-                    <span v-if="errors.senderPosition" class="text-sm text-red-500">{{ errors.senderPosition }}</span>
+                    <span v-if="errors.sender_position" class="text-sm text-red-500">{{ errors.sender_position }}</span>
                   </div>
                 </div>
               </div>
@@ -270,8 +265,7 @@
 
 <script>
 import axios from 'axios';
-import { MdEditor } from 'md-editor-v3';
-import 'md-editor-v3/lib/style.css';
+import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
 
 // Update the apiClient configuration
 const apiClient = axios.create({
@@ -286,25 +280,13 @@ const apiClient = axios.create({
 
 export default {
   name: 'LetterForm',
-  props: {
-    letterData: {
-      type: Object,
-      default: () => ({})
-    },
-    editMode: {
-      type: Boolean,
-      default: false
-    }
-  },
-  emits: ['save-letter', 'close', 'refresh-letters'],
-  recipients: {
-    type: Array,
-    default: () => []
-  },
-  
-  // Add showConfirmModal to data
   data() {
     return {
+      editor: ClassicEditor,
+      editorConfig: {
+        placeholder: 'Write your content here...',
+        toolbar: ['heading', '|', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', '|', 'undo', 'redo']
+      },
       formData: {
         title: '',
         subject: '',
@@ -337,8 +319,8 @@ export default {
         content: '',
         date: '',
         recipients: '',
-        senderName: '',
-        senderPosition: ''
+        sender_name: '',
+        sender_position: ''
       },
       showSuccess: false,
       showUpdateFormModal: false,
@@ -506,6 +488,7 @@ export default {
   },  // Close methods object with comma
 
   mounted() {
+    this.initEditor();
     this.fetchRecipients();
   },
 
@@ -513,4 +496,27 @@ export default {
 };
 </script>
 
-<!-- Remove the separate script setup section at the bottom -->
+<style>
+.prose {
+  width: 100%;
+}
+.editor-toolbar button {
+  margin-right: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.25rem;
+}
+.editor-toolbar button.is-active {
+  background-color: #e5e7eb;
+}
+.ck-editor__editable {
+  min-height: 400px;
+  max-height: 600px;
+}
+.ck.ck-editor {
+  width: 100%;
+}
+.ck.ck-editor__main > .ck-editor__editable {
+  background-color: white;
+}
+</style>
