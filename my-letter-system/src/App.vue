@@ -1,12 +1,17 @@
 <template>
   <div id="app">
-    <router-view></router-view>
+    <LetterForm />
   </div>
 </template>
 
 <script>
+import LetterForm from './components/LetterForm.vue'
+
 export default {
-  name: 'App'
+  name: 'App',
+  components: {
+    LetterForm
+  }
 }
 </script>
 

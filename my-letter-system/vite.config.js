@@ -4,7 +4,7 @@ import vue2 from '@vitejs/plugin-vue2'
 export default defineConfig({
   plugins: [vue2()],
   server: {
-    host: '192.168.5.15',
+    host: true,  // This will expose to all network interfaces
     port: 5173,
     open: true,
     proxy: {
