@@ -1,11 +1,10 @@
 import { createApp } from 'vue';
-import VueMarkdownEditor from '@kangc/v-md-editor';
-import '@kangc/v-md-editor/lib/style/base-editor.css';
-import vuepressTheme from '@kangc/v-md-editor/lib/theme/vuepress.js';
-
-// Set the theme
-VueMarkdownEditor.use(vuepressTheme);
+import App from './App.vue';
+import { MdEditor } from 'md-editor-v3';
+import 'md-editor-v3/lib/style.css';
+import router from './router';
 
 const app = createApp(App);
-app.use(VueMarkdownEditor);
+app.component('MdEditor', MdEditor);
+app.use(router);
 app.mount('#app');

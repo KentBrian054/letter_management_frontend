@@ -260,10 +260,8 @@
 
 <script>
 import axios from 'axios';
-import VueMarkdownEditor from '@kangc/v-md-editor';
-import '@kangc/v-md-editor/lib/style/base-editor.css';
-import vuepressTheme from '@kangc/v-md-editor/lib/theme/vuepress.js';
-import '@kangc/v-md-editor/lib/theme/style/vuepress.css';
+import { MdEditor } from 'md-editor-v3';
+import 'md-editor-v3/lib/style.css';
 
 // Update the apiClient configuration
 const apiClient = axios.create({
@@ -275,8 +273,6 @@ const apiClient = axios.create({
   },
   withCredentials: false  // Change to false
 });
-
-VueMarkdownEditor.use(vuepressTheme);
 
 export default {
   name: 'LetterForm',

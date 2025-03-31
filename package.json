@@ -15,9 +15,11 @@
     "codemirror": "^5.65.0",
     "marked": "^4.0.0",
     "mavon-editor": "^2.10.4",
+    "md-editor-v3": "^5.4.5",
     "pdfjs-dist": "^5.0.375",
     "prismjs": "^1.29.0",
-    "vue": "^2.7.16"
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0"
   },
   "devDependencies": {
     "autoprefixer": "^10.4.21",
