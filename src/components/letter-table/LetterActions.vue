@@ -52,7 +52,20 @@
 </template>
 
 <script setup lang="ts">
-// Add this at the top of the script section
+import { ref, onMounted, onBeforeUnmount, type PropType } from 'vue'
+import ActionButton from './ActionButton.vue'
+import PreviewOptionsModal from './modals/PreviewOptionsModal.vue'
+import DeleteConfirmationModal from './modals/DeleteConfirmationModal.vue'
+import SuccessMessageModal from './modals/SuccessMessageModal.vue'
+import LetterModal from './LetterModal.vue'
+import LoadingSpinner from '../common/LoadingSpinner.vue'
+import {
+  EditIcon,
+  PreviewDownloadIcon,
+  DeleteIcon
+} from './icons'
+
+// Type declarations should be in a separate .d.ts file or at the very top
 declare module '@vue/runtime-core' {
   interface GlobalComponents {
     ActionButton: typeof import('./ActionButton.vue').default
@@ -60,19 +73,9 @@ declare module '@vue/runtime-core' {
     DeleteConfirmationModal: typeof import('./modals/DeleteConfirmationModal.vue').default
     SuccessMessageModal: typeof import('./modals/SuccessMessageModal.vue').default
     LetterModal: typeof import('./LetterModal.vue').default
+    LoadingSpinner: typeof import('../common/LoadingSpinner.vue').default
   }
 }
-import { ref, PropType, onMounted, onBeforeUnmount } from 'vue'  // <-- Add lifecycle hooks here
-import ActionButton from './ActionButton.vue'
-import PreviewOptionsModal from './modals/PreviewOptionsModal.vue'
-import DeleteConfirmationModal from './modals/DeleteConfirmationModal.vue'
-import SuccessMessageModal from './modals/SuccessMessageModal.vue'
-import LetterModal from './LetterModal.vue'
-import {
-  EditIcon,
-  PreviewDownloadIcon,
-  DeleteIcon
-} from './icons'
 
 // Type Definitions
 interface Letter {

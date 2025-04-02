@@ -507,56 +507,43 @@ export default {
     // Update the previewLetter method
     async previewLetter(letter) {
       try {
-        // Format recipients to include both name and position
-        const formattedRecipients = Array.isArray(letter.recipients) 
-          ? letter.recipients.map(recipient => {
-              // Handle string recipients (possibly JSON strings)
-              if (typeof recipient === 'string') {
-                try {
-                  const parsed = JSON.parse(recipient);
-                  return {
-                    name: parsed.name || parsed,
-                    position: parsed.position || ''
-                  };
-                } catch {
-                  // If parsing fails, assume it's just a name
-                  return { name: recipient, position: '' };
-                }
-              }
-              // Handle object recipients
-              return {
-                name: recipient.name || '',
-                position: recipient.position || ''
-              };
-            })
-          : [];
-    
-        // Log the formatted data for debugging
-        console.log('Formatted recipients:', formattedRecipients);
-    
+        // Log the letter data for debugging
+        console.log('Previewing letter:', letter);
+
         const response = await apiClient.get(`/letters/${letter.id}/preview`, {
           responseType: 'blob',
           headers: {
-            'Accept': 'application/pdf'
-          },
-          data: {
-            recipients: formattedRecipients  // Send as data instead of params
+            'Accept': 'application/pdf',
+            // Remove Content-Type header for blob response
+            'X-Requested-With': 'XMLHttpRequest'
           }
         });
-    
+
         if (response.status === 200 && response.data) {
           const blob = new Blob([response.data], { type: 'application/pdf' });
           const blobUrl = window.URL.createObjectURL(blob);
           window.open(blobUrl, '_blank');
+          
+          setTimeout(() => {
+            window.URL.revokeObjectURL(blobUrl);
+          }, 100);
         } else {
-          throw new Error('Failed to load PDF preview');
+          throw new Error(`Failed to load PDF preview: ${response.status}`);
         }
       } catch (error) {
-        console.error('Error previewing letter:', error);
-        alert('Unable to preview the letter. The file might not be available or there was a server error.');
+        console.error('Error previewing letter details:', {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status,
+          headers: error.response?.headers
+        });
+        
+        // Show more specific error message to user
+        const errorMessage = error.response?.data?.message || 
+          'Unable to preview the letter. Please ensure the letter exists and try again.';
+        alert(errorMessage);
       }
-    },
-  
+    },  // Added comma here
     async downloadLetter(letter) {
       try {
         const response = await apiClient.get(`/letters/${letter.id}/download`, {
