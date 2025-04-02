@@ -52,18 +52,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, type PropType } from 'vue'
+import { ref, onMounted, onBeforeUnmount, type Component, type PropType } from 'vue'
+import type { EditIcon as EditIconType } from './icons'
+import type { PreviewDownloadIcon as PreviewDownloadIconType } from './icons'
+import type { DeleteIcon as DeleteIconType } from './icons'
+import { EditIcon, PreviewDownloadIcon, DeleteIcon } from './icons'
 import ActionButton from './ActionButton.vue'
 import PreviewOptionsModal from './modals/PreviewOptionsModal.vue'
 import DeleteConfirmationModal from './modals/DeleteConfirmationModal.vue'
 import SuccessMessageModal from './modals/SuccessMessageModal.vue'
 import LetterModal from './LetterModal.vue'
 import LoadingSpinner from '../common/LoadingSpinner.vue'
-import {
-  EditIcon,
-  PreviewDownloadIcon,
-  DeleteIcon
-} from './icons'
 
 // Type declarations should be in a separate .d.ts file or at the very top
 declare module '@vue/runtime-core' {

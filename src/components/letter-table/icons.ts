@@ -1,6 +1,7 @@
-import { defineComponent, h } from 'vue'
+import { h, type Component } from 'vue'
 
-export const EditIcon = defineComponent({
+export const EditIcon: Component = {
+  name: 'EditIcon',
   render() {
     return h('svg', {
       xmlns: 'http://www.w3.org/2000/svg',
@@ -13,9 +14,10 @@ export const EditIcon = defineComponent({
       })
     ])
   }
-})
+}
 
-export const PreviewDownloadIcon = defineComponent({
+export const PreviewDownloadIcon: Component = {
+  name: 'PreviewDownloadIcon',
   render() {
     return h('svg', {
       xmlns: 'http://www.w3.org/2000/svg',
@@ -33,9 +35,10 @@ export const PreviewDownloadIcon = defineComponent({
       })
     ])
   }
-})
+}
 
-export const DeleteIcon = defineComponent({
+export const DeleteIcon: Component = {
+  name: 'DeleteIcon',
   render() {
     return h('svg', {
       xmlns: 'http://www.w3.org/2000/svg',
@@ -50,4 +53,4 @@ export const DeleteIcon = defineComponent({
       })
     ])
   }
-})
+}

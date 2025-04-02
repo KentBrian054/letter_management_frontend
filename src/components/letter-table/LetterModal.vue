@@ -251,14 +251,13 @@
             @click="showConfirmModal = false"
             class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
           >
-            <!-- In the template section, update the cancel button -->
-            <button
-              type="button"
+            <!-- Replace the nested button with a div or span -->
+            <div
               @click="$emit('close')"
-              class="px-4 py-1.5 border border-gray-300 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50"
+              class="px-4 py-1.5 border border-gray-300 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50 cursor-pointer"
             >
               Cancel
-            </button>
+            </div>
           </button>
         </div>
       </div>

@@ -9,13 +9,15 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@heroicons/vue": "^2.2.0",
     "@pdftron/webviewer": "^11.3.0",
-    "@vitejs/plugin-vue": "^5.2.3",
+    "@types/lodash": "^4.17.16",
     "@vueup/vue-quill": "^1.2.0",
     "axios": "^1.6.7",
     "axios-retry": "^4.0.0",
     "codemirror": "^5.65.0",
     "file-saver": "^2.0.5",
+    "lodash": "^4.17.21",
     "mammoth": "^1.9.0",
     "marked": "^4.0.0",
     "mavon-editor": "^2.10.4",
@@ -25,10 +27,16 @@
     "vue-router": "^4.5.0"
   },
   "devDependencies": {
+    "@types/node": "^22.13.17",
+    "@types/vue": "^1.0.31",
+    "@types/webpack-env": "^1.18.8",
     "@vitejs/plugin-react": "^4.3.4",
+    "@vitejs/plugin-vue": "^5.2.3",
+    "@vue/runtime-dom": "^3.5.13",
     "autoprefixer": "^10.4.21",
     "postcss": "^8.5.3",
     "tailwindcss": "^3.4.17",
+    "typescript": "^5.8.2",
     "vite": "^5.4.16"
   }
 }

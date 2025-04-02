@@ -1,14 +1,11 @@
 <template>
   <div class="fixed inset-0 z-50 overflow-hidden">
-    <!-- Enhanced blur background -->
     <div class="fixed inset-0 bg-gray-900/50 backdrop-blur-xl" style="backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);"></div>
     
-    <!-- Modal container -->
     <div class="flex items-center justify-center min-h-screen p-4">
       <div class="bg-white/95 rounded-lg shadow-xl p-6 backdrop-blur-lg border border-white/20 w-full max-w-md relative transform transition-all">
-        <!-- Existing form content remains unchanged -->
         <div class="flex justify-between items-center mb-6">
-          <h2 class="text-xl font-semibold">Add New Recipient</h2>
+          <h2 class="text-xl font-semibold">{{ recipient ? 'Edit Recipient' : 'Add New Recipient' }}</h2>
           <button @click="$emit('close')" class="text-gray-500 hover:text-gray-700">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -21,20 +18,18 @@
             <label for="name" class="block text-sm font-medium text-gray-700">Name</label>
             <input
               id="name"
-              v-model="recipientForm.name"
+              v-model="form.name"
               type="text"
               required
               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             />
           </div>
 
-          <!-- Removed email field -->
-
           <div>
-            <label for="department" class="block text-sm font-medium text-gray-700">Department</label>
+            <label for="position" class="block text-sm font-medium text-gray-700">Position</label>
             <input
-              id="department"
-              v-model="recipientForm.department"
+              id="position"
+              v-model="form.position"
               type="text"
               required
               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
@@ -44,7 +39,7 @@
           <div class="flex justify-end space-x-3">
             <button
               type="button"
-              @click="$emit('close')" <!-- Ensure this line emits the close event -->
+              @click="$emit('close')"
               class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
             >
               Cancel
@@ -61,7 +56,7 @@
     </div>
 
     <!-- Success Message Modal -->
-    <div v-if="showSuccessModal" class="fixed inset-0 z-[60] overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div v-if="showSuccessModal" class="fixed inset-0 z-[60] overflow-y-auto">
       <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
         <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
         <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
@@ -99,57 +94,81 @@
   </div>
 </template>
 
-<script>
-import axios from 'axios';
-import { debounce } from 'lodash';
+<script setup lang="ts">
+import { ref, watch } from 'vue'
+import type { PropType } from 'vue'
+import debounce from 'lodash/debounce'
+import axios from 'axios'
 
-export default {
-  data() {
-    return {
-      recipientForm: {
-        name: '',
-        department: ''
-      },
-      showSuccessModal: false
-    };
-  },
-  methods: {
-    handleSubmit: debounce(async function() {
-      try {
-        const response = await axios.post('http://192.168.8.36:8000/api/recipients', this.recipientForm, {
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          timeout: 5000
-        });
-        
-        this.$emit('recipient-added', response.data);
-        this.$emit('refresh-recipients');
-        
-        this.recipientForm = { name: '', department: '' };
-        this.showSuccessModal = true;
-      } catch (error) {
-        console.error('Save failed:', error);
-        let errorMessage = 'Error saving recipient. ';
-        if (error.code === 'ERR_NETWORK') {
-          errorMessage += 'Cannot connect to the server. Please verify:\n' +
-            '1. The server is running at 192.168.5.15:8000\n' +
-            '2. Your network connection is stable\n' +
-            '3. No firewall is blocking the connection';
-        } else if (error.code === 'ECONNABORTED') {
-          errorMessage += 'Request timed out. Server is taking too long to respond.';
-        } else if (error.response) {
-          errorMessage += error.response.data.message || 'Please try again.';
-        }
-        alert(errorMessage);
-      }
-    }, 1000),
+interface Recipient {
+  id?: number
+  name: string
+  position: string
+}
 
-    handleSuccessClose() {
-      this.showSuccessModal = false;
-      this.$emit('close');
+interface ApiError {
+  code?: string
+  response?: {
+    data: {
+      message?: string
     }
   }
-};
+}
+
+const props = defineProps({
+  recipient: {
+    type: Object as PropType<Recipient | null>,
+    default: null
+  }
+})
+
+const emit = defineEmits(['close', 'save'])
+
+// Initialize form with default values
+const form = ref<Recipient>({
+  name: '',
+  position: ''
+})
+
+// Watch for changes in the recipient prop
+watch(() => props.recipient, (newRecipient) => {
+  form.value = {
+    name: newRecipient?.name || '',
+    position: newRecipient?.position || ''
+  }
+}, { immediate: true })
+
+const showSuccessModal = ref(false)
+
+const handleSubmit = debounce(async () => {
+  try {
+    const response = await axios.post('http://192.168.5.11:8000/api/recipients', form.value, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      timeout: 5000
+    })
+    
+    emit('save', response.data)
+    showSuccessModal.value = true
+  } catch (error) {
+    const err = error as ApiError
+    console.error('Save failed:', err)
+    let errorMessage = 'Error saving recipient. '
+    if (err.code === 'ERR_NETWORK') {
+      errorMessage += 'Cannot connect to the server. Please check your network connection.'
+    } else if (err.code === 'ECONNABORTED') {
+      errorMessage += 'Request timed out. Server is taking too long to respond.'
+    } else if (err.response) {
+      errorMessage += err.response.data.message || 'Please try again.'
+    }
+    alert(errorMessage)
+  }
+}, 1000)
+
+const handleSuccessClose = () => {
+  showSuccessModal.value = false
+  emit('close')
+}
 </script>
