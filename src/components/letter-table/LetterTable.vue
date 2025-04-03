@@ -20,7 +20,7 @@
         <table class="min-w-full table-fixed">
           <thead class="bg-gray-50">
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Actions</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
@@ -35,29 +35,32 @@
                   :letter="letter"
                   @edit="openEditModal"
                   @preview="previewLetter"
-                  @download="downloadLetter"
-                  @export-word="exportToWord"
                   @delete="confirmDelete"
                 />
               </td>
               <td class="px-6 py-4 whitespace-nowrap">{{ letter.title }}</td>
               <td class="px-6 py-4 whitespace-nowrap">{{ formatDate(letter.date) }}</td>
-              <td class="px-6 py-4 whitespace-nowrap">{{ letter.type }}</td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span :class="{
+                  'px-2 py-1 rounded-full text-xs font-medium': true,
+                  'bg-blue-100 text-blue-800': letter.letter_type === 'Business Letter',
+                  'bg-green-100 text-green-800': letter.letter_type === 'Memo'
+                }">
+                  {{ letter.letter_type }}
+                </span>
+              </td>
               <td class="px-6 py-4 whitespace-nowrap">{{ letter.subject }}</td>
               <td class="px-6 py-4">
                 <div class="flex flex-wrap gap-1">
-                  <template v-if="letter.recipients">
+                  <template v-if="letter.recipients && letter.recipients.length">
                     <span 
-                      v-for="(recipient, index) in (typeof letter.recipients === 'string' ? 
-                        JSON.parse(letter.recipients) : letter.recipients)" 
+                      v-for="(recipient, index) in letter.recipients" 
                       :key="index"
                       class="px-2 py-1 bg-gray-100 rounded-md text-sm"
                     >
                       <div class="flex flex-col">
-                        <span>{{ typeof recipient === 'object' ? recipient.name : recipient }}</span>
-                        <span v-if="typeof recipient === 'object' && recipient.position" 
-                              class="text-xs text-gray-500"
-                        >
+                        <span class="text-blue-600">{{ recipient.name }}</span>
+                        <span v-if="recipient.position" class="text-xs text-gray-500">
                           {{ recipient.position }}
                         </span>
                       </div>
@@ -72,27 +75,47 @@
       </div>
     </div>
 
-    <!-- Add Pagination Component -->
-    <TablePagination
-      :current-page="currentPage"
-      :total-pages="totalPages"
-      :displayed-pages="displayedPages"
-      @previous="previousPage"
-      @next="nextPage"
-      @goto-page="goToPage"
-    />
+   
+    <!-- Add background and border styling to pagination -->
+    <div class="mt-4 bg-white rounded-lg shadow">
+      <TablePagination
+        :current-page="currentPage"
+        :total-pages="totalPages"
+        :displayed-pages="displayedPages"
+        @previous="previousPage"
+        @next="nextPage"
+        @goto-page="goToPage"
+        class="p-4 border-t border-gray-200"
+      />
+    </div>
 
-    <!-- Letter Modal remains the same -->
-    <LetterModal
-      v-if="showModal"
-      @close="closeModal"
-      @save-letter="handleLetterSaved"
-      @update-letter="handleLetterSaved"
-      @refresh-letters="fetchLetters"
-      :letter="selectedLetter"
-    />
+    <!-- Add transition and styling to modal -->
+    <Transition name="fade">
+      <LetterModal
+        v-if="showModal"
+        :letter="selectedLetter"
+        @close="closeModal"
+        @save-letter="handleLetterSaved"
+        @update-letter="handleLetterSaved"
+        @refresh-letters="fetchLetters"
+        class="bg-white rounded-lg shadow-xl"
+      />
+    </Transition>
   </div>
 </template>
+
+<style scoped>
+/* Add these styles for the fade transition */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+</style>
 
 <script>
 import apiClient from '@/utils/apiClient';
@@ -149,10 +172,11 @@ export default {
         const matchesTitle = letter.title?.toLowerCase().includes(this.searchQuery.toLowerCase()) ?? false;
         const matchesSubject = letter.subject?.toLowerCase().includes(this.searchSubject.toLowerCase()) ?? false;
         const matchesType = this.selectedType ? letter.type?.toLowerCase() === this.selectedType.toLowerCase() : true;
+        // Fix: Change letter.recipient to letter.recipients
         const matchesRecipient = this.searchRecipient ? 
-          (Array.isArray(letter.recipient) ? 
-            letter.recipient.some(r => r.toLowerCase().includes(this.searchRecipient.toLowerCase())) :
-            String(letter.recipient).toLowerCase().includes(this.searchRecipient.toLowerCase())
+          (Array.isArray(letter.recipients) ? 
+            letter.recipients.some(r => r.toLowerCase().includes(this.searchRecipient.toLowerCase())) :
+            String(letter.recipients).toLowerCase().includes(this.searchRecipient.toLowerCase())
           ) : true;
         
         const letterDate = new Date(letter.date);  // Changed from date_created to date
@@ -240,7 +264,7 @@ export default {
       this.selectedLetter = null;
     },
     // Update handleLetterSaved
-    async handleLetterSaved(letterData) {
+    async handleLetterSaved(_letterData) {
       try {
         await this.fetchLetters();
         this.$router.push('/letters');
@@ -396,16 +420,32 @@ export default {
       try {
         console.log('Fetching letters...');
         const response = await apiClient.get('/letters');
+        console.log('Letters response:', response.data);
         
         if (response.data.success && Array.isArray(response.data.data)) {
-          this.letters = response.data.data;
-          const maxPage = Math.ceil(this.letters.length / this.perPage);
-          if (this.currentPage > maxPage) {
-            this.currentPage = maxPage || 1;
-          }
-        } else {
-          console.error('Unexpected data structure:', response.data);
-          this.letters = [];
+          this.letters = await Promise.all(response.data.data.map(async letter => {
+            // Fetch recipient details for each recipient ID
+            let recipientDetails = [];
+            if (Array.isArray(letter.recipients)) {
+              recipientDetails = await Promise.all(letter.recipients.map(async recipient => {
+                try {
+                  // Make sure we're using the recipient ID, not the whole object
+                  const recipientId = typeof recipient === 'object' ? recipient.id : recipient;
+                  const recipientResponse = await apiClient.get(`/recipients/${recipientId}`);
+                  return recipientResponse.data.data;
+                } catch (error) {
+                  console.error('Error fetching recipient:', error);
+                  return { name: 'Unknown', position: '' };
+                }
+              }));
+            }
+          
+            return {
+              ...letter,
+              type: letter.letter_type || 'Unknown Type',
+              recipients: recipientDetails
+            };
+          }));
         }
       } catch (error) {
         console.error('Letters fetch error:', error);
@@ -469,10 +509,51 @@ export default {
         this.currentPage++;
       }
     },
-  
+    
+    parseRecipients(recipients) {
+      if (!recipients) return [];
+      
+      try {
+        if (Array.isArray(recipients)) {
+          return recipients.map(recipient => {
+            if (typeof recipient === 'string') {
+              try {
+                const parsed = JSON.parse(recipient);
+                return {
+                  name: parsed.name || recipient,
+                  position: parsed.position || ''
+                };
+              } catch {
+                return { name: recipient, position: '' };
+              }
+            }
+            return {
+              name: recipient.name || 'Unknown',
+              position: recipient.position || ''
+            };
+          });
+        }
+        
+        if (typeof recipients === 'string') {
+          try {
+            const parsed = JSON.parse(recipients);
+            return Array.isArray(parsed) ? 
+              parsed.map(r => ({ name: r.name || r, position: r.position || '' })) :
+              [{ name: parsed.name || parsed, position: parsed.position || '' }];
+          } catch {
+            return [{ name: recipients, position: '' }];
+          }
+        }
+        
+        return [{ name: recipients.name || 'Unknown', position: recipients.position || '' }];
+      } catch (error) {
+        console.error('Error parsing recipients:', error);
+        return [];
+      }
+    },
     goToPage(page) {
       this.currentPage = page;
-    },  // Add comma here
+    },  // Remove this semicolon here
     
     toggleDropdown(letterId) {
       // Create reactive state if it doesn't exist
@@ -583,6 +664,44 @@ export default {
         this.currentPdfUrl = null;
       }
     },
+    updateFilters(newFilters) {
+      this.searchQuery = newFilters.searchQuery;
+      this.searchSubject = newFilters.searchSubject;
+      this.searchRecipient = newFilters.searchRecipient;
+      this.selectedType = newFilters.selectedType;
+      this.dateRange = newFilters.dateRange;
+    },
+
+    async exportToWord(letter) {
+      try {
+        const response = await apiClient.get(`/letters/${letter.id}/export-word`, {
+          responseType: 'blob',
+          headers: {
+            'Accept': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+          }
+        });
+
+        if (response.status === 200 && response.data) {
+          const blob = new Blob([response.data], { 
+            type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' 
+          });
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.setAttribute('download', `${letter.title || 'letter'}-${letter.id}.docx`);
+          document.body.appendChild(link);
+          link.click();
+          
+          setTimeout(() => {
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+          }, 100);
+        }
+      } catch (error) {
+        console.error('Error exporting to Word:', error);
+        alert('Unable to export the letter to Word format. Please try again later.');
+      }
+    },
   }
 };
 </script>
@@ -616,3 +735,4 @@ export default {
   max-width: 100%;
 }
 </style>
+

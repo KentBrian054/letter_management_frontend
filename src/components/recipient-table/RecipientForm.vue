@@ -94,30 +94,14 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { ref, watch } from 'vue'
-import type { PropType } from 'vue'
 import debounce from 'lodash/debounce'
 import axios from 'axios'
 
-interface Recipient {
-  id?: number
-  name: string
-  position: string
-}
-
-interface ApiError {
-  code?: string
-  response?: {
-    data: {
-      message?: string
-    }
-  }
-}
-
 const props = defineProps({
   recipient: {
-    type: Object as PropType<Recipient | null>,
+    type: Object,
     default: null
   }
 })
@@ -125,7 +109,7 @@ const props = defineProps({
 const emit = defineEmits(['close', 'save'])
 
 // Initialize form with default values
-const form = ref<Recipient>({
+const form = ref({
   name: '',
   position: ''
 })
@@ -153,15 +137,14 @@ const handleSubmit = debounce(async () => {
     emit('save', response.data)
     showSuccessModal.value = true
   } catch (error) {
-    const err = error as ApiError
-    console.error('Save failed:', err)
+    console.error('Save failed:', error)
     let errorMessage = 'Error saving recipient. '
-    if (err.code === 'ERR_NETWORK') {
+    if (error.code === 'ERR_NETWORK') {
       errorMessage += 'Cannot connect to the server. Please check your network connection.'
-    } else if (err.code === 'ECONNABORTED') {
+    } else if (error.code === 'ECONNABORTED') {
       errorMessage += 'Request timed out. Server is taking too long to respond.'
-    } else if (err.response) {
-      errorMessage += err.response.data.message || 'Please try again.'
+    } else if (error.response) {
+      errorMessage += error.response.data.message || 'Please try again.'
     }
     alert(errorMessage)
   }

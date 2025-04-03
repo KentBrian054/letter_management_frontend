@@ -334,12 +334,23 @@ export default {
   created() {
     if (this.letter && Object.keys(this.letter).length > 0) {
       this.editMode = true;
+      // Properly format the recipients data
+      const formattedRecipients = Array.isArray(this.letter.recipients) 
+        ? this.letter.recipients.map(r => ({
+            id: r.id || r,
+            name: r.name || '',
+            position: r.position || ''
+          }))
+        : [{
+            id: this.letter.recipients?.id || this.letter.recipients || '',
+            name: this.letter.recipients?.name || '',
+            position: this.letter.recipients?.position || ''
+          }];
+      
       this.letterForm = {
         ...this.letter,
         date: this.formatDateForInput(this.letter.date),
-        recipients: Array.isArray(this.letter.recipients) 
-          ? this.letter.recipients 
-          : [this.letter.recipients]
+        recipients: formattedRecipients
       };
     }
     this.fetchRecipients();
@@ -403,92 +414,119 @@ export default {
       }
     },
 
+    async confirmSubmit() {
+      try {
+        this.isSubmitting = true;
+        
+        // Validate recipients
+        const validRecipients = this.letterForm.recipients
+          .filter(r => r.id && r.name && r.position);
+        
+        if (validRecipients.length === 0) {
+          throw new Error('At least one valid recipient is required');
+        }
+
+        // Format the data according to backend requirements
+        const formData = {
+          title: this.letterForm.title.trim(),
+          subject: this.letterForm.subject.trim(),
+          type: this.letterForm.type,
+          date: this.formatDate(this.letterForm.date),
+          content: this.letterForm.content.trim(),
+          sender_name: this.letterForm.sender_name.trim(),
+          sender_position: this.letterForm.sender_position.trim(),
+          recipients: validRecipients.map(r => r.id) // Send only recipient IDs
+        };
+    
+        console.log('Sending data:', formData);
+    
+        const response = await apiClient.post('/letters', formData);
+        
+        if (response.data.success) {
+          this.showSuccess = true;
+          setTimeout(() => {
+            this.showSuccess = false;
+            this.$emit('letter-saved', response.data.data);
+            this.closeModal();
+          }, 1500);
+        } else {
+          throw new Error(response.data.message || 'Failed to save letter');
+        }
+      } catch (error) {
+        console.error('Request Data:', error.config?.data);
+        console.error('Error Response:', error.response?.data);
+        
+        // Show specific validation errors to user
+        if (error.response?.data?.error) {
+          alert(Array.isArray(error.response.data.error) 
+            ? error.response.data.error.join('\n')
+            : error.response.data.error);
+        } else {
+          alert(error.message || 'Failed to save letter. Please check all required fields.');
+        }
+        this.showConfirmModal = false;
+      } finally {
+        this.isSubmitting = false;
+      }
+    },  // Add comma here
+
+    // Update updateRecipient method
+    updateRecipient(index, recipientId) {
+      if (!recipientId) {
+        this.letterForm.recipients[index] = { id: '', name: '', position: '' };
+        return;
+      }
+      
+      const selectedRecipient = this.recipientsList.find(r => r.id === recipientId);
+      if (selectedRecipient) {
+        this.letterForm.recipients[index] = {
+          id: selectedRecipient.id,
+          name: selectedRecipient.name,
+          position: selectedRecipient.position
+        };
+      }
+    },
+
+    // Add formatDateForInput method if not exists
+    formatDateForInput(date) {
+      if (!date) return new Date().toISOString().split('T')[0];
+      return new Date(date).toISOString().split('T')[0];
+    },  // Add comma here
+
     validateForm() {
       const errors = {};
-      if (!this.letterForm.title) {
+      if (!this.letterForm.title?.trim()) {
         errors.title = 'Title is required';
       }
       if (!this.letterForm.type) {
         errors.type = 'Type is required';
       }
-      // Add other validations as needed
+      if (!this.letterForm.subject?.trim()) {
+        errors.subject = 'Subject is required';
+      }
+      if (!this.letterForm.date) {
+        errors.date = 'Date is required';
+      }
+      if (!this.letterForm.content?.trim()) {
+        errors.content = 'Content is required';
+      }
+      if (!this.letterForm.recipients?.some(r => r.id)) {
+        errors.recipients = 'At least one recipient is required';
+      }
+      if (!this.letterForm.sender_name?.trim()) {
+        errors.sender_name = 'Sender name is required';
+      }
+      if (!this.letterForm.sender_position?.trim()) {
+        errors.sender_position = 'Sender position is required';
+      }
+    
       return errors;
     },
 
-    updateRecipient(index, recipient) {
-      try {
-        // Handle string input (name only)
-        if (typeof recipient === 'string') {
-          this.letterForm.recipients[index] = {
-            id: '',
-            name: recipient,
-            position: ''
-          };
-          return;
-        }
-
-        // Handle array input (first item)
-        if (Array.isArray(recipient)) {
-          const [firstRecipient] = recipient;
-          this.letterForm.recipients[index] = {
-            id: firstRecipient?.id || '',
-            name: firstRecipient?.name || firstRecipient || '',
-            position: firstRecipient?.position || ''
-          };
-          return;
-        }
-
-        // Handle object input
-        if (typeof recipient === 'object' && recipient !== null) {
-          this.letterForm.recipients[index] = {
-            id: recipient.id || '',
-            name: recipient.name || '',
-            position: recipient.position || ''
-          };
-          return;
-        }
-
-        // Handle invalid input
-        this.letterForm.recipients[index] = { id: '', name: '', position: '' };
-      } catch (error) {
-        console.error('Error updating recipient:', error);
-        this.letterForm.recipients[index] = { id: '', name: '', position: '' };
-      }
-    },
-
-    formatDateForInput(dateString) {
-      if (!dateString) return '';
-      const date = new Date(dateString);
-      return date.toISOString().split('T')[0];
-    },
-
+    // Update the handleBack method
     handleBack() {
-      const hasUnsavedChanges = this.checkUnsavedChanges();
-      
-      if (hasUnsavedChanges) {
-        if (confirm('You have unsaved changes. Are you sure you want to go back?')) {
-          this.$emit('close');
-          this.$router.push('/letters');
-        }
-      } else {
-        this.$emit('close');
-        this.$router.push('/letters');
-      }
-    },
-
-    checkUnsavedChanges() {
-      const initialForm = this.letter || {
-        title: '',
-        type: '',
-        subject: '',
-        date: new Date().toISOString().split('T')[0],
-        recipients: [{ id: '', name: '', position: '' }],
-        content: '',
-        sender_name: '',
-        sender_position: ''
-      };
-
-      return JSON.stringify(this.letterForm) !== JSON.stringify(initialForm);
+      if (this.isSubmitting) return;
+      this.$emit('close');
     }
   }
 }

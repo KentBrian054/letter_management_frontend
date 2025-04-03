@@ -7,25 +7,42 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
-    'Access-Control-Allow-Origin': '*'
   },
-  withCredentials: false,
-  proxy: false,
-  maxRedirects: 5,
-  keepAlive: true
+  withCredentials: false
 });
 
-axiosRetry(apiClient, {
-  retries: 3,
-  retryDelay: (retryCount) => {
-    return retryCount * 5000;
+// Add request interceptor
+apiClient.interceptors.request.use(
+  config => {
+    console.log('Sending Request:', {
+      url: config.url,
+      method: config.method,
+      data: config.data
+    });
+    return config;
   },
-  retryCondition: (error) => {
-    return axiosRetry.isNetworkOrIdempotentRequestError(error) || 
-           error.code === 'ECONNABORTED' ||
-           error.response?.status >= 500;
+  error => {
+    console.error('Request Error:', error);
+    return Promise.reject(error);
+  }
+);
+
+// Add response interceptor
+apiClient.interceptors.response.use(
+  response => {
+    console.log('Response Success:', response.data);
+    return response;
   },
-  shouldResetTimeout: true
-});
+  error => {
+    console.error('Response Error:', {
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message
+    });
+    return Promise.reject(error);
+  }
+);
+
+axiosRetry(apiClient, { retries: 3 });
 
 export default apiClient;

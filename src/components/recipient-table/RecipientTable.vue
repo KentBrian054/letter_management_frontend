@@ -104,49 +104,73 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { ref, onMounted, computed, watch } from 'vue'
-import axios from 'axios'
 import RecipientActions from './RecipientActions.vue'
-import RecipientForm from './RecipientForm.vue'  // Changed from RecipientModal
-import PlusIcon from './icons/PlusIcon.vue'
+import RecipientForm from './RecipientForm.vue'
+import axios from 'axios'
+import { PlusIcon } from '@heroicons/vue/24/outline'
 
-interface Recipient {
-  id: number
-  name: string
-  position: string
-}
+// Remove unused imports
+// import apiClient from '@/utils/apiClient'
 
-const recipients = ref<Recipient[]>([])
+const recipients = ref([])
 const showAddModal = ref(false)
-const selectedRecipient = ref<Recipient | null>(null)
+const selectedRecipient = ref(null)
+const page = ref(1)
+const perPage = ref(10)
+const searchQuery = ref('')
 
-// Add error type interface
-interface ApiError {
-  code?: string;
-  response?: {
-    data: {
-      message?: string;
-    };
-  };
-}
+const filteredRecipients = computed(() => {
+  return recipients.value.filter(recipient => 
+    recipient.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+    recipient.position.toLowerCase().includes(searchQuery.value.toLowerCase())
+  )
+})
+
+const totalPages = computed(() => {
+  return Math.ceil(filteredRecipients.value.length / perPage.value)
+})
+
+const startIndex = computed(() => (page.value - 1) * perPage.value)
+const endIndex = computed(() => Math.min(startIndex.value + perPage.value, filteredRecipients.value.length))
+const totalItems = computed(() => filteredRecipients.value.length)
+
+const paginatedRecipients = computed(() => {
+  const start = (page.value - 1) * perPage.value
+  const end = start + perPage.value
+  return filteredRecipients.value.slice(start, end)
+})
+
+const displayedPages = computed(() => {
+  const total = totalPages.value
+  const current = page.value
+  const pages = []
+  for (let i = Math.max(1, current - 2); i <= Math.min(total, current + 2); i++) {
+    pages.push(i)
+  }
+  return pages
+})
 
 const fetchRecipients = async () => {
   try {
-    const response = await axios.get('http://192.168.5.11:8000/api/recipients', {
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      timeout: 5000
-    })
-    recipients.value = response.data
+    const response = await axios.get('http://192.168.5.11:8000/api/recipients')
+    console.log('API Response:', response.data)
+    
+    if (response.data && response.data.data) {
+      recipients.value = response.data.data
+    } else if (Array.isArray(response.data)) {
+      recipients.value = response.data
+    } else {
+      recipients.value = []
+      console.error('Unexpected data format:', response.data)
+    }
   } catch (error) {
-    const err = error as ApiError
-    console.error('Error fetching recipients:', err)
-    if (err.code === 'ERR_NETWORK') {
+    console.error('Error fetching recipients:', error)
+    recipients.value = []
+    if (error.code === 'ERR_NETWORK') {
       alert('Cannot connect to the server. Please check your network connection.')
-    } else if (err.code === 'ECONNABORTED') {
+    } else if (error.code === 'ECONNABORTED') {
       alert('Request timed out. Server is taking too long to respond.')
     } else {
       alert('Failed to fetch recipients. Please try again later.')
@@ -154,23 +178,22 @@ const fetchRecipients = async () => {
   }
 }
 
-const handleEdit = (recipient: Recipient) => {
+const handleEdit = (recipient) => {
   selectedRecipient.value = recipient
   showAddModal.value = true
 }
 
-const handleDelete = async (id: number) => {
+const handleDelete = async (id) => {
   try {
     await axios.delete(`http://192.168.5.11:8000/api/recipients/${id}`)
     await fetchRecipients()
   } catch (error) {
-    const err = error as ApiError
-    console.error('Error deleting recipient:', err)
+    console.error('Error deleting recipient:', error)
     alert('Failed to delete recipient. Please try again.')
   }
 }
 
-const handleSave = async (recipient: Recipient) => {
+const handleSave = async (recipient) => {
   await fetchRecipients()
   closeModal()
 }
@@ -183,42 +206,8 @@ const closeModal = () => {
 onMounted(() => {
   fetchRecipients()
 })
-
-// Add these new imports and refs
-const searchQuery = ref('')
-const page = ref(1)
-const itemsPerPage = 10
-
-// Add computed properties
-const filteredRecipients = computed(() => {
-  return recipients.value.filter((recipient: Recipient) => 
-    recipient.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-    recipient.position.toLowerCase().includes(searchQuery.value.toLowerCase())
-  )
-})
-
-const totalItems = computed(() => filteredRecipients.value.length)
-const totalPages = computed(() => Math.ceil(totalItems.value / itemsPerPage))
-const startIndex = computed(() => (page.value - 1) * itemsPerPage)
-const endIndex = computed(() => Math.min(startIndex.value + itemsPerPage, totalItems.value))
-
-const displayedPages = computed(() => {
-  const pages = []
-  for (let i = 1; i <= totalPages.value; i++) {
-    pages.push(i)
-  }
-  return pages
-})
-
-const paginatedRecipients = computed(() => {
-  return filteredRecipients.value.slice(startIndex.value, endIndex.value)
-})
-
-// Update your v-for in the table to use paginatedRecipients instead of recipients
-// <tr v-for="recipient in paginatedRecipients" :key="recipient.id" class="hover:bg-gray-50">
-
-// Watch for search query changes to reset pagination
-watch(searchQuery, () => {
-  page.value = 1
-})
 </script>
+
+<style scoped>
+/* Your styles here */
+</style>
