@@ -57,6 +57,7 @@
         <div class="h-full overflow-y-auto pt-16 px-6 pb-6">
           <div class="bg-white rounded-lg shadow p-6">
             <!-- Inside the form element, reorder the sections -->
+            <!-- In your form element -->
             <form @submit.prevent="handleSubmit" class="space-y-6">
               <!-- Letter Type -->
               <div class="flex items-center gap-4">
@@ -373,111 +374,39 @@ export default {
       }
     },
 
+    // Update the fetchRecipients method
     async fetchRecipients() {
       try {
-        const response = await apiClient.get('/recipients', {
-          validateStatus: function (status) {
-            return status >= 200 && status < 500;
-          }
-        });
+        const response = await apiClient.get('/recipients/');  // Ensure trailing slash and no undefined
         
-        if (response.status === 200) {
-          if (Array.isArray(response.data)) {
-            this.recipientsList = response.data;
-          } else if (response.data && Array.isArray(response.data.data)) {
-            this.recipientsList = response.data.data;
-          }
+        if (response.data && Array.isArray(response.data.data)) {
+          this.recipientsList = response.data.data;
+        } else if (Array.isArray(response.data)) {
+          this.recipientsList = response.data;
         } else {
-          console.error('Server returned status:', response.status);
+          console.error('Unexpected response format:', response.data);
           this.recipientsList = [];
         }
       } catch (error) {
         console.error('Error fetching recipients:', error);
         this.recipientsList = [];
-        alert('Unable to fetch recipients. Please check your connection and try again.');
+        // Use a more user-friendly error handling
+        if (error.response?.status === 404) {
+          alert('Recipients endpoint not found. Please check the API configuration.');
+        } else {
+          alert('Unable to fetch recipients. Please check your connection and try again.');
+        }
       }
     },
 
-    async handleSubmit() {
-      try {
-        // Validate form data
-        const errors = this.validateForm();
-        if (Object.keys(errors).length > 0) {
-          this.errors = errors;
-          return;
-        }
-
-        // Show confirmation modal instead of directly emitting
-        this.showConfirmModal = true;
-      } catch (error) {
-        console.error('Form submission error:', error);
-      }
-    },
-
-    async confirmSubmit() {
-      try {
-        this.isSubmitting = true;
-        
-        // Validate recipients
-        const validRecipients = this.letterForm.recipients
-          .filter(r => r.id && r.name && r.position);
-        
-        if (validRecipients.length === 0) {
-          throw new Error('At least one valid recipient is required');
-        }
-
-        // Format the data according to backend requirements
-        const formData = {
-          title: this.letterForm.title.trim(),
-          subject: this.letterForm.subject.trim(),
-          type: this.letterForm.type,
-          date: this.formatDate(this.letterForm.date),
-          content: this.letterForm.content.trim(),
-          sender_name: this.letterForm.sender_name.trim(),
-          sender_position: this.letterForm.sender_position.trim(),
-          recipients: validRecipients.map(r => r.id) // Send only recipient IDs
-        };
-    
-        console.log('Sending data:', formData);
-    
-        const response = await apiClient.post('/letters', formData);
-        
-        if (response.data.success) {
-          this.showSuccess = true;
-          setTimeout(() => {
-            this.showSuccess = false;
-            this.$emit('letter-saved', response.data.data);
-            this.closeModal();
-          }, 1500);
-        } else {
-          throw new Error(response.data.message || 'Failed to save letter');
-        }
-      } catch (error) {
-        console.error('Request Data:', error.config?.data);
-        console.error('Error Response:', error.response?.data);
-        
-        // Show specific validation errors to user
-        if (error.response?.data?.error) {
-          alert(Array.isArray(error.response.data.error) 
-            ? error.response.data.error.join('\n')
-            : error.response.data.error);
-        } else {
-          alert(error.message || 'Failed to save letter. Please check all required fields.');
-        }
-        this.showConfirmModal = false;
-      } finally {
-        this.isSubmitting = false;
-      }
-    },  // Add comma here
-
-    // Update updateRecipient method
+    // Update the updateRecipient method
     updateRecipient(index, recipientId) {
-      if (!recipientId) {
+      if (!recipientId || recipientId === '') {
         this.letterForm.recipients[index] = { id: '', name: '', position: '' };
         return;
       }
       
-      const selectedRecipient = this.recipientsList.find(r => r.id === recipientId);
+      const selectedRecipient = this.recipientsList.find(r => r.id === parseInt(recipientId) || r.id === recipientId);
       if (selectedRecipient) {
         this.letterForm.recipients[index] = {
           id: selectedRecipient.id,
@@ -527,65 +456,85 @@ export default {
     handleBack() {
       if (this.isSubmitting) return;
       this.$emit('close');
-    }
-  }
-}
+    },  // Add comma here
+    
+    async handleSubmit(e) {
+      e.preventDefault();
+      if (this.isSubmitting) return;
+      
+      // Validate form
+      const errors = this.validateForm();
+      if (Object.keys(errors).length > 0) {
+        this.errors = errors;
+        return;
+      }
 
-// Remove the second export default completely
+      this.showConfirmModal = true;
+    },  // Add comma here
+
+    async confirmSubmit() {
+      try {
+        this.isSubmitting = true;
+        
+        // Format the data for submission
+        const formData = {
+          title: this.letterForm.title,
+          type: this.letterForm.type,
+          subject: this.letterForm.subject,
+          date: this.formatDateForInput(this.letterForm.date),
+          content: this.letterForm.content,
+          sender_name: this.letterForm.sender_name,
+          sender_position: this.letterForm.sender_position,
+          // Ensure recipients are properly formatted
+          recipients: this.letterForm.recipients
+            .filter(r => r.id) // Remove empty recipients
+            .map(r => typeof r.id === 'string' ? parseInt(r.id) : r.id) // Convert IDs to integers
+        };
+    
+        console.log('Sending data:', formData); // Debug log
+    
+        if (this.editMode) {
+          const response = await apiClient.put(`/letters/${this.letter.id}`, formData);
+          if (response.data.success) {
+            this.$emit('update-letter', response.data.data);
+          } else {
+            throw new Error(response.data.message || 'Failed to update letter');
+          }
+        } else {
+          const response = await apiClient.post('/letters', formData);
+          if (response.data.success) {
+            this.$emit('save-letter', response.data.data);
+          } else {
+            throw new Error(response.data.message || 'Failed to save letter');
+          }
+        }
+    
+        this.showConfirmModal = false;
+        this.showSuccess = true;
+        
+        setTimeout(() => {
+          this.showSuccess = false;
+          this.$emit('close');
+          this.$emit('refresh-letters');
+        }, 1500);
+    
+      } catch (error) {
+        console.error('Error saving letter:', error);
+        const errorMessage = error.response?.data?.message 
+          || error.response?.data?.error 
+          || error.message 
+          || 'Failed to save letter. Please try again.';
+        alert(errorMessage);
+      } finally {
+        this.isSubmitting = false;
+      }
+    }
+  } // Add closing brace for methods
+} // Add closing brace for export default
 </script>
 
 <style>
 .prose {
   width: 100%;
-}
-.editor-toolbar button {
-  margin-right: 0.5rem;
-  padding: 0.25rem 0.5rem;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.25rem;
-}
-.editor-toolbar button.is-active {
-  background-color: #e5e7eb;
-}
-.ck-editor__editable {
-  min-height: 400px;
-  max-height: 600px;
-}
-.ck.ck-editor {
-  width: 100%;
-}
-.ck.ck-editor__main > .ck-editor__editable {
-  background-color: white;
-}
-/* Update QuillEditor styles */
-.quill-editor {
-  height: 400px !important;
-  margin-bottom: 20px;
-}
-
-.ql-container {
-  height: auto !important;
-  min-height: 350px;
-}
-
-.ql-editor {
-  height: 350px !important;
-  overflow-y: auto !important;
-}
-
-.ql-container {
-  position: relative !important;
-  height: auto !important;
-}
-.ql-toolbar {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  background: white;
-}
-
-/* Remove the deprecated styles */
-.ql-container {
-  position: static !important;
 }
 </style>

@@ -40,13 +40,14 @@
               </td>
               <td class="px-6 py-4 whitespace-nowrap">{{ letter.title }}</td>
               <td class="px-6 py-4 whitespace-nowrap">{{ formatDate(letter.date) }}</td>
+              <!-- In the template section, update the type column -->
               <td class="px-6 py-4 whitespace-nowrap">
                 <span :class="{
                   'px-2 py-1 rounded-full text-xs font-medium': true,
-                  'bg-blue-100 text-blue-800': letter.letter_type === 'Business Letter',
-                  'bg-green-100 text-green-800': letter.letter_type === 'Memo'
+                  'bg-blue-100 text-blue-800': letter.type === 'Business Letter',
+                  'bg-green-100 text-green-800': letter.type === 'Memo'
                 }">
-                  {{ letter.letter_type }}
+                  {{ letter.type || 'Unknown Type' }}
                 </span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">{{ letter.subject }}</td>
@@ -167,19 +168,22 @@ export default {
     totalPages() {
       return Math.max(1, Math.ceil(this.filteredLetters.length / this.perPage));
     },
+    // In the computed section, update the filteredLetters method
     filteredLetters() {
       return this.letters.filter(letter => {
         const matchesTitle = letter.title?.toLowerCase().includes(this.searchQuery.toLowerCase()) ?? false;
         const matchesSubject = letter.subject?.toLowerCase().includes(this.searchSubject.toLowerCase()) ?? false;
-        const matchesType = this.selectedType ? letter.type?.toLowerCase() === this.selectedType.toLowerCase() : true;
-        // Fix: Change letter.recipient to letter.recipients
+        // Update this line to use letter.type instead of letter.type?.toLowerCase()
+        const matchesType = this.selectedType ? letter.type === this.selectedType : true;
+        
+        // Rest of the code remains the same
         const matchesRecipient = this.searchRecipient ? 
           (Array.isArray(letter.recipients) ? 
             letter.recipients.some(r => r.toLowerCase().includes(this.searchRecipient.toLowerCase())) :
             String(letter.recipients).toLowerCase().includes(this.searchRecipient.toLowerCase())
           ) : true;
         
-        const letterDate = new Date(letter.date);  // Changed from date_created to date
+        const letterDate = new Date(letter.date);
         const matchesDateRange = (!this.dateRange.start || letterDate >= new Date(this.dateRange.start)) &&
                                    (!this.dateRange.end || letterDate <= new Date(this.dateRange.end));
         
@@ -419,49 +423,55 @@ export default {
     async fetchLetters() {
       try {
         console.log('Fetching letters...');
-        const response = await apiClient.get('/letters');
-        console.log('Letters response:', response.data);
+        const response = await apiClient.get('/letters', {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
+        });
         
-        if (response.data.success && Array.isArray(response.data.data)) {
-          this.letters = await Promise.all(response.data.data.map(async letter => {
-            // Fetch recipient details for each recipient ID
-            let recipientDetails = [];
-            if (Array.isArray(letter.recipients)) {
-              recipientDetails = await Promise.all(letter.recipients.map(async recipient => {
-                try {
-                  // Make sure we're using the recipient ID, not the whole object
-                  const recipientId = typeof recipient === 'object' ? recipient.id : recipient;
-                  const recipientResponse = await apiClient.get(`/recipients/${recipientId}`);
-                  return recipientResponse.data.data;
-                } catch (error) {
-                  console.error('Error fetching recipient:', error);
-                  return { name: 'Unknown', position: '' };
-                }
-              }));
-            }
-          
-            return {
-              ...letter,
-              type: letter.letter_type || 'Unknown Type',
-              recipients: recipientDetails
-            };
+        console.log('Raw response:', response);
+    
+        if (response.data?.success && Array.isArray(response.data.data)) {
+          this.letters = response.data.data.map(letter => ({
+            ...letter,
+            date: letter.date || new Date().toISOString().split('T')[0],
+            type: letter.type || 'Unknown Type',
+            recipients: Array.isArray(letter.recipients) ? letter.recipients : []
           }));
+        } else {
+          this.letters = [];
         }
       } catch (error) {
         console.error('Letters fetch error:', error);
         this.letters = [];
+        
+        // Show a more specific error message for database table issues
+        if (error.response?.data?.error?.includes('Table') && error.response?.data?.error?.includes('doesn\'t exist')) {
+          alert('Database tables are not set up. Please contact your system administrator to run the database migrations.');
+        } else {
+          alert('Failed to fetch letters. Please try again later.');
+        }
       }
     },
     async fetchRecipients() {
       try {
         const response = await apiClient.get('/recipients');
-        if (response.data.success) {
+        if (response.data?.success) {
           this.recipients = response.data.data;
-          console.log('Recipients fetched:', this.recipients); // Add this line
+        } else {
+          this.recipients = [];
         }
       } catch (error) {
         console.error('Error fetching recipients:', error);
         this.recipients = [];
+        
+        // Show a more specific error message for database table issues
+        if (error.response?.data?.error?.includes('Table') && error.response?.data?.error?.includes('doesn\'t exist')) {
+          alert('Database tables are not set up. Please contact your system administrator to run the database migrations.');
+        } else {
+          alert('Failed to fetch recipients. Please try again later.');
+        }
       }
     },
     async updateLetter(letterData) {
