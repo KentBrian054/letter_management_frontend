@@ -25,15 +25,13 @@
       <table class="min-w-full bg-white border border-gray-200 rounded-lg">
         <thead class="bg-gray-50">
           <tr>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Position</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-200">
           <tr v-for="recipient in paginatedRecipients" :key="recipient.id" class="hover:bg-gray-50">
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ recipient.name }}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ recipient.position }}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm">
               <RecipientActions 
                 :recipient="recipient"
@@ -42,6 +40,8 @@
                 @refresh="fetchRecipients"
               />
             </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ recipient.name }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ recipient.position }}</td>
           </tr>
         </tbody>
       </table>
@@ -154,7 +154,7 @@ const displayedPages = computed(() => {
 
 const fetchRecipients = async () => {
   try {
-    const response = await axios.get('http://192.168.5.11:8000/api/recipients')
+    const response = await axios.get('http://192.168.5.40:8000/api/recipients')
     console.log('API Response:', response.data)
     
     if (response.data && response.data.data) {
@@ -185,7 +185,7 @@ const handleEdit = (recipient) => {
 
 const handleDelete = async (id) => {
   try {
-    await axios.delete(`http://192.168.5.11:8000/api/recipients/${id}`)
+    await axios.delete(`http://192.168.5.40:8000/api/recipients/${id}`)
     await fetchRecipients()
   } catch (error) {
     console.error('Error deleting recipient:', error)

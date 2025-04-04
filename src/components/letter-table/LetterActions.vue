@@ -8,10 +8,11 @@
       <i class="fas fa-edit text-lg"></i>
     </button>
     
+    <!-- Preview button that opens modal -->
     <button
-      @click="$emit('preview', letter)"
+      @click="showPreviewModal = true"
       class="text-blue-600 hover:text-blue-800 p-1"
-      title="Preview"
+      title="Preview & Export"
     >
       <i class="fas fa-eye text-lg"></i>
     </button>
@@ -23,6 +24,42 @@
     >
       <i class="fas fa-trash text-lg"></i>
     </button>
+
+    <!-- Preview Modal -->
+    <div v-if="showPreviewModal" class="fixed inset-0 z-50 overflow-y-auto">
+      <div class="fixed inset-0 bg-gray-500/75 backdrop-blur-sm" @click="showPreviewModal = false"></div>
+      <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="relative bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+          <div class="p-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Preview Options</h3>
+            <div class="space-y-3">
+              <button
+                @click="handlePreviewPDF"
+                class="w-full flex items-center px-4 py-3 text-left text-gray-700 rounded-lg hover:bg-gray-100"
+              >
+                <i class="fas fa-file-pdf text-red-500 mr-3 text-lg"></i>
+                <span>Preview as PDF</span>
+              </button>
+              <button
+                @click="handleExportWord"
+                class="w-full flex items-center px-4 py-3 text-left text-gray-700 rounded-lg hover:bg-gray-100"
+              >
+                <i class="fas fa-file-word text-blue-500 mr-3 text-lg"></i>
+                <span>Export to Word</span>
+              </button>
+            </div>
+          </div>
+          <div class="bg-gray-50 px-6 py-3 flex justify-end rounded-b-lg">
+            <button
+              @click="showPreviewModal = false"
+              class="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-md"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -33,6 +70,21 @@ export default {
     letter: {
       type: Object,
       required: true
+    }
+  },
+  data() {
+    return {
+      showPreviewModal: false
+    }
+  },
+  methods: {
+    handlePreviewPDF() {
+      this.$emit('preview-pdf', this.letter);
+      this.showPreviewModal = false;
+    },
+    handleExportWord() {
+      this.$emit('export-word', this.letter);
+      this.showPreviewModal = false;
     }
   }
 }

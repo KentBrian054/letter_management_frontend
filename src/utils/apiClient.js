@@ -1,23 +1,57 @@
 import axios from 'axios';
-import axiosRetry from 'axios-retry';
 
 const apiClient = axios.create({
-  baseURL: 'http://192.168.5.11:8000/api',
-  timeout: 60000,
+  baseURL: 'http://192.168.5.40:8000/api',
   headers: {
-    'Content-Type': 'application/json',
     'Accept': 'application/json',
+    'Content-Type': 'application/json'
   },
-  withCredentials: false
+  withCredentials: false,
+  timeout: 10000
 });
 
-// Add request interceptor
 apiClient.interceptors.request.use(
   config => {
-    console.log('Sending Request:', {
-      url: config.url,
+    if (config.method === 'put' && config.data) {
+      let data = typeof config.data === 'string' ? JSON.parse(config.data) : { ...config.data };
+      
+      // Ensure recipients is always an array with valid objects
+      if (data.recipients) {
+        // Convert to array if it's not
+        const recipientsArray = Array.isArray(data.recipients) ? data.recipients : [data.recipients];
+        
+        data.recipients = recipientsArray
+          .filter(Boolean) // Remove falsy values
+          .map(recipient => {
+            // Handle string recipients
+            if (typeof recipient === 'string') {
+              const trimmedName = recipient.trim();
+              return trimmedName ? { name: trimmedName, position: '' } : null;
+            }
+            
+            // Handle object recipients
+            const name = recipient?.name?.trim() || '';
+            return name ? {
+              name: name,
+              position: (recipient?.position || '').trim()
+            } : null;
+          })
+          .filter(Boolean); // Remove null entries
+      }
+
+      // Ensure at least one valid recipient
+      if (!data.recipients?.length) {
+        throw new Error('At least one recipient with a name is required');
+      }
+
+      config.data = JSON.stringify(data);
+    }
+    
+    console.log('Request:', {
       method: config.method,
-      data: config.data
+      url: config.url,
+      data: config.data,
+      headers: config.headers
     });
     return config;
   },
@@ -27,22 +61,31 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Add response interceptor
 apiClient.interceptors.response.use(
   response => {
-    console.log('Response Success:', response.data);
+    // Log successful response
+    console.log('Response:', {
+      status: response.status,
+      data: response.data
+    });
     return response;
   },
   error => {
-    console.error('Response Error:', {
+    // Enhanced error logging
+    const errorDetails = {
+      message: error.message,
       status: error.response?.status,
+      statusText: error.response?.statusText,
       data: error.response?.data,
-      message: error.message
-    });
+      config: {
+        url: error.config?.url,
+        method: error.config?.method,
+        headers: error.config?.headers
+      }
+    };
+    console.error('API Error Details:', errorDetails);
     return Promise.reject(error);
   }
 );
-
-axiosRetry(apiClient, { retries: 3 });
 
 export default apiClient;

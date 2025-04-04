@@ -34,7 +34,8 @@
                 <LetterActions 
                   :letter="letter"
                   @edit="openEditModal"
-                  @preview="previewLetter"
+                  @preview-pdf="previewPDF"
+                  @export-word="exportToWord"
                   @delete="confirmDelete"
                 />
               </td>
@@ -79,34 +80,85 @@
    
     <!-- Add background and border styling to pagination -->
     <div class="mt-4 bg-white rounded-lg shadow">
+      <!-- Update the TablePagination usage -->
       <TablePagination
         :current-page="currentPage"
         :total-pages="totalPages"
         :displayed-pages="displayedPages"
+        :total-items="filteredLetters.length"
+        :items-per-page="perPage"
         @previous="previousPage"
         @next="nextPage"
         @goto-page="goToPage"
-        class="p-4 border-t border-gray-200"
+        class="p-4"
       />
     </div>
 
     <!-- Add transition and styling to modal -->
+    <!-- Replace the existing modal section -->
     <Transition name="fade">
-      <LetterModal
-        v-if="showModal"
-        :letter="selectedLetter"
-        @close="closeModal"
-        @save-letter="handleLetterSaved"
-        @update-letter="handleLetterSaved"
-        @refresh-letters="fetchLetters"
-        class="bg-white rounded-lg shadow-xl"
-      />
+      <div v-if="showModal" class="fixed inset-0 z-50 overflow-y-auto">
+        <div class="fixed inset-0 bg-gray-500/75 backdrop-blur-sm"></div>
+        <div class="flex items-center justify-center min-h-screen p-4">
+          <div class="relative bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4">
+            <LetterModal
+              :letter="selectedLetter"
+              @close="closeModal"
+              @save-letter="handleLetterSaved"
+              @update-letter="handleLetterSaved"
+              @refresh-letters="fetchLetters"
+            />
+          </div>
+        </div>
+      </div>
     </Transition>
+
+    <!-- Delete Confirmation Modal -->
+    <div v-if="showDeleteConfirmModal" class="fixed inset-0 z-50 overflow-y-auto">
+      <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+          <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+        </div>
+        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+          <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+            <div class="sm:flex sm:items-start">
+              <div class="mt-3 text-center sm:mt-0 sm:text-left">
+                <h3 class="text-lg leading-6 font-medium text-gray-900">Delete Letter</h3>
+                <div class="mt-2">
+                  <p class="text-sm text-gray-500">Are you sure you want to delete this letter? This action cannot be undone.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+            <button
+              @click="deleteLetter(confirmDeleteId)"
+              class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm"
+            >
+              Delete
+            </button>
+            <button
+              @click="showDeleteConfirmModal = false"
+              class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Success Message -->
+    <div
+      v-if="showDeleteSuccess"
+      class="fixed bottom-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg"
+    >
+      Letter deleted successfully!
+    </div>
   </div>
 </template>
 
 <style scoped>
-/* Add these styles for the fade transition */
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.3s ease;
@@ -116,6 +168,11 @@
 .fade-leave-to {
   opacity: 0;
 }
+
+.fade-enter-to,
+.fade-leave-from {
+  opacity: 1;
+}
 </style>
 
 <script>
@@ -124,20 +181,26 @@ import LetterModal from './LetterModal.vue';
 import LetterActions from './LetterActions.vue';
 import SearchFilters from './SearchFilters.vue';
 import TablePagination from './TablePagination.vue';
+import DeleteConfirmationModal from './DeleteConfirmationModal.vue';
+import useLetterUpdate from './composables/useLetterUpdate';
+import useLetterDelete from './composables/useLetterDelete';
+import useLetterPreview from './composables/useLetterPreview';
 
 export default {
+  name: 'LetterTable',
   components: {
     LetterModal,
     LetterActions,
     SearchFilters,
-    TablePagination
+    TablePagination,
+    DeleteConfirmationModal
   },
   emits: ['refresh-letters'],
   data() {
     return {
       letters: [],
       recipients: [],
-      showModal: false,  // Add this line
+      showModal: false,
       showLetterForm: false,
       showEditModal: false,
       showDeleteConfirmModal: false,
@@ -253,11 +316,21 @@ export default {
         return '';
       }
     },
+    // Keep only one version of each method
+    updateFilters(newFilters) {
+      this.searchQuery = newFilters.searchQuery;
+      this.searchSubject = newFilters.searchSubject;
+      this.searchRecipient = newFilters.searchRecipient;
+      this.selectedType = newFilters.selectedType;
+      this.dateRange = newFilters.dateRange;
+      this.currentPage = 1; // Reset to first page when filters change
+    },
+
     closeEditModal() {
       this.showEditModal = false;
       this.currentLetter = null;
     },
-    // Remove the duplicate handleNewLetterClick method and update it to handle both modal and routing
+
     handleNewLetterClick() {
       this.selectedLetter = null;
       this.showModal = true;
@@ -267,92 +340,7 @@ export default {
       this.showModal = false;
       this.selectedLetter = null;
     },
-    // Update handleLetterSaved
-    async handleLetterSaved(_letterData) {
-      try {
-        await this.fetchLetters();
-        this.$router.push('/letters');
-      } catch (error) {
-        console.error('Error after saving letter:', error);
-      }
-    },
-  
-    closeLetterForm() {
-      this.showLetterForm = false;
-      this.selectedLetter = null;
-    },
-    addNewRecipient() {
-      if (!this.currentLetter.recipients) {
-        this.currentLetter.recipients = [];
-      }
-      this.currentLetter.recipients.push({
-        id: '',
-        name: '',
-        position: ''
-      });
-    },
-  
-    removeRecipientAt(index) {
-      this.currentLetter.recipients.splice(index, 1);
-    },
-  
-    updateRecipient(index, recipientId) {
-      const selectedRecipient = this.recipients.find(r => r.id === recipientId);
-      if (selectedRecipient) {
-        this.$set(this.currentLetter.recipients, index, {
-          id: selectedRecipient.id,
-          name: selectedRecipient.name,
-          position: selectedRecipient.position
-        });
-      }
-    },
-  
-    // Update the openEditModal method to handle recipients properly
-    async openEditModal(letter) {
-      try {
-        const letterData = { ...letter };
-        if (typeof letterData.recipients === 'string') {
-          letterData.recipients = JSON.parse(letterData.recipients);
-        }
-        this.currentLetter = letterData;
-        
-        // Initialize selectedRecipients with the letter's recipients
-        this.selectedRecipients = Array.isArray(letterData.recipients) 
-          ? letterData.recipients.map(r => typeof r === 'object' ? r.name : r)
-          : [];
-    
-        // Ensure recipients are fetched
-        if (this.recipients.length === 0) {
-          await this.fetchRecipients();
-        }
-        
-        this.showEditModal = true;
-      } catch (error) {
-        console.error('Error preparing letter data for edit:', error);
-      }
-    },
-  
-    // Update the addRecipient method
-    addRecipient(event) {
-      const selectedValue = event.target.value;
-      if (selectedValue && !this.selectedRecipients.includes(selectedValue)) {
-        this.selectedRecipients.push(selectedValue);
-        this.currentLetter.recipients = this.selectedRecipients;
-      }
-      event.target.value = ''; // Reset select
-    },
-  
-    // Update the removeRecipient method
-    removeRecipient(recipient) {
-      this.selectedRecipients = this.selectedRecipients.filter(r => r !== recipient);
-      this.currentLetter.recipients = this.selectedRecipients;
-    },
-  
-    closeEditModal() {
-      this.showEditModal = false;
-      this.currentLetter = null;
-      this.selectedRecipients = []; // Reset selected recipients
-    },
+
     async handleLetterSaved(letterData) {
       try {
         if (!letterData) {
@@ -369,22 +357,22 @@ export default {
         this.showLetterForm = false;
         this.showEditModal = false;
         await this.fetchLetters();
+        this.$router.push('/letters');
       } catch (error) {
         console.error('Error saving letter:', error);
-        // Show error to user
         alert(error.response?.data?.message || 'Failed to save letter. Please check all required fields.');
       }
     },
+
+    // Keep only one version of addLetter
     async addLetter(letterData) {
       try {
-        // Format recipients to ensure they are strings
         const recipients = Array.isArray(letterData.recipients)
           ? letterData.recipients.map(recipient => 
               typeof recipient === 'object' ? recipient.name : String(recipient)
             )
           : [String(letterData.recipients)];
     
-        // Format the data before sending
         const formattedData = {
           title: letterData.title,
           subject: letterData.subject,
@@ -396,8 +384,6 @@ export default {
           sender_position: letterData.sender_position
         };
     
-        console.log('Sending letter data:', formattedData);
-    
         const response = await apiClient.post('/letters', formattedData);
         
         if (response.data.success) {
@@ -405,9 +391,6 @@ export default {
           this.showLetterForm = false;
           this.currentPage = 1;
           this.$emit('refresh-letters');
-        } else {
-          console.error('Server response indicates failure:', response.data);
-          throw new Error(response.data.message || 'Failed to add letter');
         }
       } catch (error) {
         console.error('Error adding letter:', error);
@@ -420,9 +403,10 @@ export default {
         throw error;
       }
     },
+
+    // Keep only one fetchLetters
     async fetchLetters() {
       try {
-        console.log('Fetching letters...');
         const response = await apiClient.get('/letters', {
           headers: {
             'Accept': 'application/json',
@@ -430,8 +414,6 @@ export default {
           }
         });
         
-        console.log('Raw response:', response);
-    
         if (response.data?.success && Array.isArray(response.data.data)) {
           this.letters = response.data.data.map(letter => ({
             ...letter,
@@ -445,304 +427,201 @@ export default {
       } catch (error) {
         console.error('Letters fetch error:', error);
         this.letters = [];
-        
-        // Show a more specific error message for database table issues
-        if (error.response?.data?.error?.includes('Table') && error.response?.data?.error?.includes('doesn\'t exist')) {
-          alert('Database tables are not set up. Please contact your system administrator to run the database migrations.');
+        if (error.response?.data?.error?.includes('Table')) {
+          alert('Database tables are not set up. Please contact your system administrator.');
         } else {
           alert('Failed to fetch letters. Please try again later.');
         }
       }
     },
+
+    // Keep only one deleteLetter
+    confirmDelete(id) {
+      this.confirmDeleteId = id;
+      this.showDeleteConfirmModal = true;
+    },
+
+    async deleteLetter() {
+      try {
+        if (!this.confirmDeleteId) return;
+        
+        const response = await apiClient.delete(`/letters/${this.confirmDeleteId}`);
+        if (response.data.success) {
+          this.showDeleteConfirmModal = false;
+          this.showDeleteSuccess = true;
+          await this.fetchLetters();
+          
+          setTimeout(() => {
+            this.showDeleteSuccess = false;
+          }, 2000);
+        }
+      } catch (error) {
+        console.error('Delete error:', error);
+        alert(error.response?.data?.message || 'Failed to delete letter');
+      } finally {
+        this.confirmDeleteId = null;
+      }
+    },
+
+    async updateLetter(letterData) {
+      try {
+        if (!letterData.id) {
+          throw new Error('Letter ID is required for update');
+        }
+
+        // Format recipients properly
+        const recipients = Array.isArray(letterData.recipients)
+          ? letterData.recipients.map(recipient => {
+              if (typeof recipient === 'object' && recipient.name) {
+                return {
+                  name: recipient.name,
+                  position: recipient.position || ''
+                };
+              }
+              return { name: String(recipient), position: '' };
+            })
+          : [{ name: String(letterData.recipients), position: '' }];
+
+        const formattedData = {
+          id: letterData.id,  // Add ID to ensure server knows which record to update
+          title: letterData.title || '',
+          subject: letterData.subject || '',
+          type: letterData.type || '',
+          date: this.formatDateForInput(letterData.date) || new Date().toISOString().split('T')[0],
+          recipients: recipients,
+          content: letterData.content || '',
+          sender_name: letterData.sender_name || '',
+          sender_position: letterData.sender_position || ''
+        };
+
+        // Log the request data for debugging
+        console.log('Update request data:', {
+          url: `/letters/${letterData.id}`,
+          data: formattedData
+        });
+
+        const response = await apiClient.put(`/letters/${letterData.id}`, formattedData);
+        
+        if (response.data?.success) {
+          await this.fetchLetters();
+          this.showEditModal = false;
+          this.showModal = false;
+          this.$emit('refresh-letters');
+          return response.data;
+        } else {
+          throw new Error(response.data?.message || 'Update failed');
+        }
+      } catch (error) {
+        console.error('Error updating letter:', error);
+        console.error('Error details:', {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status,
+          serverMessage: error.response?.data?.message || 'Unknown server error'
+        });
+        
+        const errorMessage = error.response?.data?.message 
+          || error.response?.data?.error 
+          || error.message 
+          || 'Failed to update letter. Please check your input and try again.';
+        alert(errorMessage);
+        throw error;
+      }
+    },
+
     async fetchRecipients() {
       try {
         const response = await apiClient.get('/recipients');
         if (response.data?.success) {
-          this.recipients = response.data.data;
+          this.recipients = response.data.data.map(recipient => ({
+            ...recipient,
+            name: recipient.name || '',
+            position: recipient.position || ''
+          }));
         } else {
           this.recipients = [];
         }
       } catch (error) {
         console.error('Error fetching recipients:', error);
         this.recipients = [];
-        
-        // Show a more specific error message for database table issues
-        if (error.response?.data?.error?.includes('Table') && error.response?.data?.error?.includes('doesn\'t exist')) {
-          alert('Database tables are not set up. Please contact your system administrator to run the database migrations.');
+        if (error.response?.data?.error?.includes('Table')) {
+          alert('Recipients table is not set up. Please contact your system administrator.');
         } else {
           alert('Failed to fetch recipients. Please try again later.');
         }
       }
     },
-    async updateLetter(letterData) {
-      try {
-        const response = await apiClient.put(`/letters/${letterData.id}`, letterData);
-        if (response.data.success) {
-          await this.fetchLetters();
-          this.showEditModal = false;
-        }
-      } catch (error) {
-        console.error('Error updating letter:', error);
-      }
-    },
-  
-    confirmDelete(id) {
-      this.confirmDeleteId = id;
-      this.showDeleteConfirmModal = true;
-    },
-  
-    async deleteLetter(id) {
-      try {
-        const response = await apiClient.delete(`/letters/${id}`);
-        if (response.data.success) {
-          this.showDeleteConfirmModal = false;
-          this.showDeleteSuccess = true;
-          await this.fetchLetters();
-          setTimeout(() => {
-            this.showDeleteSuccess = false;
-          }, 2000);
-        }
-      } catch (error) {
-        console.error('Error deleting letter:', error);
-      }
-    },
-  
     // Add pagination methods
     previousPage() {
       if (this.currentPage > 1) {
         this.currentPage--;
       }
     },
-  
+
     nextPage() {
       if (this.currentPage < this.totalPages) {
         this.currentPage++;
       }
     },
-    
-    parseRecipients(recipients) {
-      if (!recipients) return [];
-      
-      try {
-        if (Array.isArray(recipients)) {
-          return recipients.map(recipient => {
-            if (typeof recipient === 'string') {
-              try {
-                const parsed = JSON.parse(recipient);
-                return {
-                  name: parsed.name || recipient,
-                  position: parsed.position || ''
-                };
-              } catch {
-                return { name: recipient, position: '' };
-              }
-            }
-            return {
-              name: recipient.name || 'Unknown',
-              position: recipient.position || ''
-            };
-          });
-        }
-        
-        if (typeof recipients === 'string') {
-          try {
-            const parsed = JSON.parse(recipients);
-            return Array.isArray(parsed) ? 
-              parsed.map(r => ({ name: r.name || r, position: r.position || '' })) :
-              [{ name: parsed.name || parsed, position: parsed.position || '' }];
-          } catch {
-            return [{ name: recipients, position: '' }];
-          }
-        }
-        
-        return [{ name: recipients.name || 'Unknown', position: recipients.position || '' }];
-      } catch (error) {
-        console.error('Error parsing recipients:', error);
-        return [];
-      }
-    },
+
     goToPage(page) {
-      this.currentPage = page;
-    },  // Remove this semicolon here
-    
-    toggleDropdown(letterId) {
-      // Create reactive state if it doesn't exist
-      if (!this.dropdownStates[letterId]) {
-        this.$set(this.dropdownStates, letterId, false);
+      if (page >= 1 && page <= this.totalPages) {
+        this.currentPage = page;
       }
-      
-      // Close all other dropdowns first
-      Object.keys(this.dropdownStates).forEach(key => {
-        if (key !== letterId.toString()) {
-          this.$set(this.dropdownStates, key, false);
-        }
-      });
-      
-      // Toggle the current dropdown
-      this.$set(this.dropdownStates, letterId, !this.dropdownStates[letterId]);
-    
-      // Close dropdown when clicking preview or download
-      if (this.dropdownStates[letterId]) {
-        this.$nextTick(() => {
-          const handleClickOutside = (event) => {
-            if (!event.target.closest('.relative.inline-block')) {
-              this.$set(this.dropdownStates, letterId, false);
-              document.removeEventListener('click', handleClickOutside);
-            }
-          };
-          document.addEventListener('click', handleClickOutside);
-        });
-      }
-    },  // Added comma here
-  
-    // Update the previewLetter method
-    async previewLetter(letter) {
+    },
+
+    // Add edit modal method
+    openEditModal(letter) {
+      this.selectedLetter = { ...letter };
+      this.showModal = true;
+    },
+
+    async previewPDF(letter) {
       try {
-        // Log the letter data for debugging
-        console.log('Previewing letter:', letter);
-
         const response = await apiClient.get(`/letters/${letter.id}/preview`, {
-          responseType: 'blob',
-          headers: {
-            'Accept': 'application/pdf',
-            // Remove Content-Type header for blob response
-            'X-Requested-With': 'XMLHttpRequest'
-          }
-        });
-
-        if (response.status === 200 && response.data) {
-          const blob = new Blob([response.data], { type: 'application/pdf' });
-          const blobUrl = window.URL.createObjectURL(blob);
-          window.open(blobUrl, '_blank');
-          
-          setTimeout(() => {
-            window.URL.revokeObjectURL(blobUrl);
-          }, 100);
-        } else {
-          throw new Error(`Failed to load PDF preview: ${response.status}`);
-        }
-      } catch (error) {
-        console.error('Error previewing letter details:', {
-          message: error.message,
-          response: error.response?.data,
-          status: error.response?.status,
-          headers: error.response?.headers
+          responseType: 'blob'
         });
         
-        // Show more specific error message to user
-        const errorMessage = error.response?.data?.message || 
-          'Unable to preview the letter. Please ensure the letter exists and try again.';
-        alert(errorMessage);
-      }
-    },  // Added comma here
-    async downloadLetter(letter) {
-      try {
-        const response = await apiClient.get(`/letters/${letter.id}/download`, {
-          responseType: 'blob',
-          headers: {
-            'Accept': 'application/pdf'
-          }
-        });
-    
-        if (response.status === 200 && response.data) {
-          const blob = new Blob([response.data], { type: 'application/pdf' });
-          const url = window.URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.setAttribute('download', `${letter.title || 'letter'}-${letter.id}.pdf`);
-          document.body.appendChild(link);
-          link.click();
-          
-          // Cleanup
-          setTimeout(() => {
-            document.body.removeChild(link);
-            window.URL.revokeObjectURL(url);
-          }, 100);
-        } else {
-          throw new Error('Failed to download file');
-        }
+        const blob = new Blob([response.data], { type: 'application/pdf' });
+        const url = window.URL.createObjectURL(blob);
+        
+        // Open PDF in new window
+        window.open(url, '_blank');
       } catch (error) {
-        console.error('Error downloading letter:', error);
-        alert('Unable to download the letter. The file might not be available or there was a server error.');
+        console.error('Error previewing PDF:', error);
+        alert('Failed to generate PDF preview');
       }
-    },
-
-    closePdfPreview() {
-      this.showPdfPreview = false;
-      if (this.currentPdfUrl) {
-        URL.revokeObjectURL(this.currentPdfUrl);
-        this.currentPdfUrl = null;
-      }
-    },
-    updateFilters(newFilters) {
-      this.searchQuery = newFilters.searchQuery;
-      this.searchSubject = newFilters.searchSubject;
-      this.searchRecipient = newFilters.searchRecipient;
-      this.selectedType = newFilters.selectedType;
-      this.dateRange = newFilters.dateRange;
     },
 
     async exportToWord(letter) {
       try {
-        const response = await apiClient.get(`/letters/${letter.id}/export-word`, {
+        const response = await apiClient.get(`/letters/${letter.id}/export-word`, {  // Removed /api prefix
           responseType: 'blob',
           headers: {
-            'Accept': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            'Accept': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'Content-Type': 'application/json'
           }
         });
-
-        if (response.status === 200 && response.data) {
-          const blob = new Blob([response.data], { 
-            type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' 
-          });
-          const url = window.URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.setAttribute('download', `${letter.title || 'letter'}-${letter.id}.docx`);
-          document.body.appendChild(link);
-          link.click();
-          
-          setTimeout(() => {
-            document.body.removeChild(link);
-            window.URL.revokeObjectURL(url);
-          }, 100);
-        }
+        
+        const blob = new Blob([response.data], { 
+          type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' 
+        });
+        const url = window.URL.createObjectURL(blob);
+        
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${letter.title || 'letter'}.docx`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
       } catch (error) {
         console.error('Error exporting to Word:', error);
-        alert('Unable to export the letter to Word format. Please try again later.');
+        alert('Failed to export to Word. Please check if the export feature is enabled on the server.');
       }
-    },
+    }
   }
 };
 </script>
 
-<style scoped>
-.overflow-x-auto {
-  scrollbar-width: thin;
-  scrollbar-color: #CBD5E0 #EDF2F7;
-}
-
-.overflow-x-auto::-webkit-scrollbar {
-  height: 8px;
-}
-
-.overflow-x-auto::-webkit-scrollbar-track {
-  background: #EDF2F7;
-  border-radius: 4px;
-}
-
-.overflow-x-auto::-webkit-scrollbar-thumb {
-  background-color: #CBD5E0;
-  border-radius: 4px;
-  border: 2px solid #EDF2F7;
-}
-
-.overflow-x-auto::-webkit-scrollbar-thumb:hover {
-  background-color: #A0AEC0;
-}
-
-.mb-6 {
-  max-width: 100%;
-}
-</style>
 
