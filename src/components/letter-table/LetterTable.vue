@@ -273,12 +273,8 @@ export default {
       const end = start + this.perPage;
       return this.filteredLetters.slice(start, end);
     },
-    // Update the availableRecipients computed property
     availableRecipients() {
-    // Filter out already selected recipients
-    return this.recipients.filter(recipient => 
-    !this.selectedRecipients.includes(recipient.name)
-    );
+      return this.recipients || []; // Ensure we always return an array
     },
   },
   async mounted() {
@@ -344,14 +340,40 @@ export default {
     async handleLetterSaved(letterData) {
       try {
         if (!letterData) {
-          console.error('Letter data is undefined');
-          return;
+          throw new Error('Letter data is undefined');
         }
-    
+
+        console.log('Original letter data:', letterData);
+
+        // Validate recipients
+        if (!letterData.recipients || !Array.isArray(letterData.recipients) || letterData.recipients.length === 0) {
+          throw new Error('Please select at least one recipient');
+        }
+
+        // Ensure each recipient has required fields
+        const validRecipients = letterData.recipients.filter(recipient => 
+          recipient && 
+          recipient.id && 
+          recipient.name && 
+          recipient.name.trim()
+        );
+
+        if (validRecipients.length === 0) {
+          throw new Error('At least one recipient with a name is required');
+        }
+
+        // Update letterData with validated recipients
+        const updatedLetterData = {
+          ...letterData,
+          recipients: validRecipients
+        };
+
+        console.log('Processed letter data:', updatedLetterData);
+
         if (letterData.id) {
-          await this.updateLetter(letterData);
+          await this.updateLetter(updatedLetterData);
         } else {
-          await this.addLetter(letterData);
+          await this.addLetter(updatedLetterData);
         }
         
         this.showLetterForm = false;
@@ -360,30 +382,38 @@ export default {
         this.$router.push('/letters');
       } catch (error) {
         console.error('Error saving letter:', error);
-        alert(error.response?.data?.message || 'Failed to save letter. Please check all required fields.');
+        alert(error.message || 'Failed to save letter. Please check all required fields.');
       }
     },
 
-    // Keep only one version of addLetter
     async addLetter(letterData) {
       try {
-        const recipients = Array.isArray(letterData.recipients)
-          ? letterData.recipients.map(recipient => 
-              typeof recipient === 'object' ? recipient.name : String(recipient)
-            )
-          : [String(letterData.recipients)];
-    
+        // Ensure we have valid recipients with names
+        if (!letterData.recipients || !letterData.recipients.length) {
+          throw new Error('At least one recipient with a name is required');
+        }
+
+        // Format recipients with both IDs and names
+        const recipients = letterData.recipients.map(recipient => ({
+          id: recipient.id,
+          name: recipient.name,
+          position: recipient.position || ''
+        }));
+
         const formattedData = {
-          title: letterData.title,
-          subject: letterData.subject,
-          type: letterData.type,
+          title: letterData.title?.trim() || '',
+          subject: letterData.subject?.trim() || '',
+          type: letterData.type || '',
           date: this.formatDateForInput(letterData.date),
-          recipients: recipients,
-          content: letterData.content || '',
-          sender_name: letterData.sender_name,
-          sender_position: letterData.sender_position
+          recipients: recipients, // Send full recipient objects
+          recipient_ids: recipients.map(r => r.id),
+          content: letterData.content?.trim() || '',
+          sender_name: letterData.sender_name?.trim() || '',
+          sender_position: letterData.sender_position?.trim() || ''
         };
-    
+
+        console.log('Sending formatted data:', formattedData);
+
         const response = await apiClient.post('/letters', formattedData);
         
         if (response.data.success) {
@@ -394,12 +424,58 @@ export default {
         }
       } catch (error) {
         console.error('Error adding letter:', error);
-        if (error.response?.data?.errors) {
-          const errorMessages = Object.values(error.response.data.errors)
-            .flat()
-            .join('\n');
-          alert(errorMessages);
+        throw error;
+      }
+    },
+
+    async updateLetter(letterData) {
+      try {
+        if (!letterData.id) {
+          throw new Error('Letter ID is required for update');
         }
+
+        // Log incoming data for debugging
+        console.log('Incoming letter data:', letterData);
+
+        // Ensure recipients is properly formatted
+        if (!letterData.recipients || !Array.isArray(letterData.recipients) || letterData.recipients.length === 0) {
+          throw new Error('At least one recipient with a name is required');
+        }
+
+        // Format recipients
+        const recipients = letterData.recipients.map(recipient => ({
+          id: Number(recipient.id),
+          name: recipient.name,
+          position: recipient.position || ''
+        }));
+
+        const formattedData = {
+          id: letterData.id,
+          title: letterData.title?.trim() || '',
+          subject: letterData.subject?.trim() || '',
+          type: letterData.type || '',
+          date: this.formatDateForInput(letterData.date),
+          recipients: recipients,
+          recipient_ids: recipients.map(r => r.id),
+          content: letterData.content?.trim() || '',
+          sender_name: letterData.sender_name?.trim() || '',
+          sender_position: letterData.sender_position?.trim() || ''
+        };
+
+        console.log('Formatted data being sent:', formattedData);
+
+        const response = await apiClient.put(`/letters/${letterData.id}`, formattedData);
+        
+        if (response.data?.success) {
+          await this.fetchLetters();
+          this.showModal = false;
+          this.$emit('refresh-letters');
+          return response.data;
+        }
+
+        throw new Error(response.data?.message || 'Update failed');
+      } catch (error) {
+        console.error('Error updating letter:', error);
         throw error;
       }
     },
@@ -463,91 +539,33 @@ export default {
       }
     },
 
-    async updateLetter(letterData) {
-      try {
-        if (!letterData.id) {
-          throw new Error('Letter ID is required for update');
-        }
-
-        // Format recipients properly
-        const recipients = Array.isArray(letterData.recipients)
-          ? letterData.recipients.map(recipient => {
-              if (typeof recipient === 'object' && recipient.name) {
-                return {
-                  name: recipient.name,
-                  position: recipient.position || ''
-                };
-              }
-              return { name: String(recipient), position: '' };
-            })
-          : [{ name: String(letterData.recipients), position: '' }];
-
-        const formattedData = {
-          id: letterData.id,  // Add ID to ensure server knows which record to update
-          title: letterData.title || '',
-          subject: letterData.subject || '',
-          type: letterData.type || '',
-          date: this.formatDateForInput(letterData.date) || new Date().toISOString().split('T')[0],
-          recipients: recipients,
-          content: letterData.content || '',
-          sender_name: letterData.sender_name || '',
-          sender_position: letterData.sender_position || ''
-        };
-
-        // Log the request data for debugging
-        console.log('Update request data:', {
-          url: `/letters/${letterData.id}`,
-          data: formattedData
-        });
-
-        const response = await apiClient.put(`/letters/${letterData.id}`, formattedData);
-        
-        if (response.data?.success) {
-          await this.fetchLetters();
-          this.showEditModal = false;
-          this.showModal = false;
-          this.$emit('refresh-letters');
-          return response.data;
-        } else {
-          throw new Error(response.data?.message || 'Update failed');
-        }
-      } catch (error) {
-        console.error('Error updating letter:', error);
-        console.error('Error details:', {
-          message: error.message,
-          response: error.response?.data,
-          status: error.response?.status,
-          serverMessage: error.response?.data?.message || 'Unknown server error'
-        });
-        
-        const errorMessage = error.response?.data?.message 
-          || error.response?.data?.error 
-          || error.message 
-          || 'Failed to update letter. Please check your input and try again.';
-        alert(errorMessage);
-        throw error;
-      }
-    },
-
     async fetchRecipients() {
       try {
         const response = await apiClient.get('/recipients');
-        if (response.data?.success) {
+        console.log('Recipients response:', response.data); // Debug log
+
+        if (response.data?.success && Array.isArray(response.data.data)) {
           this.recipients = response.data.data.map(recipient => ({
-            ...recipient,
+            id: recipient.id,
             name: recipient.name || '',
-            position: recipient.position || ''
+            position: recipient.position || '',
+            selected: false
           }));
+          console.log('Processed recipients:', this.recipients); // Debug log
         } else {
+          console.warn('Invalid recipients data structure:', response.data);
           this.recipients = [];
         }
       } catch (error) {
         console.error('Error fetching recipients:', error);
+        console.log('Error response:', error.response); // Debug log
         this.recipients = [];
-        if (error.response?.data?.error?.includes('Table')) {
+        if (error.response?.status === 404) {
+          alert('Recipients endpoint not found. Please check your API configuration.');
+        } else if (error.response?.data?.error?.includes('Table')) {
           alert('Recipients table is not set up. Please contact your system administrator.');
         } else {
-          alert('Failed to fetch recipients. Please try again later.');
+          alert('Failed to fetch recipients. Please check the console for details.');
         }
       }
     },
@@ -595,29 +613,35 @@ export default {
 
     async exportToWord(letter) {
       try {
-        const response = await apiClient.get(`/letters/${letter.id}/export-word`, {  // Removed /api prefix
+        // First get the template URL from your API
+        const response = await apiClient.get(`/letters/${letter.id}/export-word`, {
           responseType: 'blob',
           headers: {
-            'Accept': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            'Content-Type': 'application/json'
+            'Accept': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
           }
         });
-        
+    
+        // Create blob and download
         const blob = new Blob([response.data], { 
-          type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' 
+          type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
         });
-        const url = window.URL.createObjectURL(blob);
         
+        // Create download link
+        const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
         link.download = `${letter.title || 'letter'}.docx`;
+        
+        // Trigger download
         document.body.appendChild(link);
         link.click();
+        
+        // Cleanup
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
       } catch (error) {
         console.error('Error exporting to Word:', error);
-        alert('Failed to export to Word. Please check if the export feature is enabled on the server.');
+        alert('Failed to export to Word. Please ensure the letter exists and try again.');
       }
     }
   }

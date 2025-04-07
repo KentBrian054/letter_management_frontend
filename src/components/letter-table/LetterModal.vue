@@ -285,7 +285,7 @@ import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import { nextTick } from 'vue'
 
 const apiClient = axios.create({
-  baseURL: 'http://192.168.5.40:8000/api',
+  baseURL: 'http://192.168.5.68:8000/api',
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
@@ -406,12 +406,15 @@ export default {
         return;
       }
       
-      const selectedRecipient = this.recipientsList.find(r => r.id === parseInt(recipientId) || r.id === recipientId);
+      const selectedRecipient = this.recipientsList.find(r => 
+        r.id === (typeof recipientId === 'string' ? parseInt(recipientId) : recipientId)
+      );
+      
       if (selectedRecipient) {
         this.letterForm.recipients[index] = {
           id: selectedRecipient.id,
-          name: selectedRecipient.name,
-          position: selectedRecipient.position
+          name: selectedRecipient.name || '',
+          position: selectedRecipient.position || ''
         };
       }
     },
@@ -472,10 +475,17 @@ export default {
       this.showConfirmModal = true;
     },  // Add comma here
 
+    // Update the confirmSubmit method
     async confirmSubmit() {
       try {
         this.isSubmitting = true;
         
+        // Validate recipients more strictly
+        const validRecipients = this.letterForm.recipients.filter(r => r.id && r.name);
+        if (!validRecipients.length) {
+          throw new Error('Please select at least one recipient');
+        }
+
         // Format the data for submission
         const formData = {
           title: this.letterForm.title,
@@ -485,14 +495,15 @@ export default {
           content: this.letterForm.content,
           sender_name: this.letterForm.sender_name,
           sender_position: this.letterForm.sender_position,
-          // Ensure recipients are properly formatted
-          recipients: this.letterForm.recipients
-            .filter(r => r.id) // Remove empty recipients
-            .map(r => typeof r.id === 'string' ? parseInt(r.id) : r.id) // Convert IDs to integers
+          recipients: validRecipients.map(r => ({
+            id: Number(r.id),
+            name: r.name,
+            position: r.position || ''
+          }))
         };
-    
-        console.log('Sending data:', formData); // Debug log
-    
+
+        console.log('Sending data:', formData);
+
         if (this.editMode) {
           const response = await apiClient.put(`/letters/${this.letter.id}`, formData);
           if (response.data.success) {
@@ -508,7 +519,7 @@ export default {
             throw new Error(response.data.message || 'Failed to save letter');
           }
         }
-    
+
         this.showConfirmModal = false;
         this.showSuccess = true;
         
@@ -517,16 +528,63 @@ export default {
           this.$emit('close');
           this.$emit('refresh-letters');
         }, 1500);
-    
+
       } catch (error) {
         console.error('Error saving letter:', error);
-        const errorMessage = error.response?.data?.message 
-          || error.response?.data?.error 
-          || error.message 
-          || 'Failed to save letter. Please try again.';
-        alert(errorMessage);
+        alert(error.message || 'Failed to save letter. Please ensure all recipients are properly selected.');
       } finally {
         this.isSubmitting = false;
+      }
+    },
+
+    // Update the validateForm method
+    validateForm() {
+      const errors = {};
+      if (!this.letterForm.title?.trim()) {
+        errors.title = 'Title is required';
+      }
+      if (!this.letterForm.type) {
+        errors.type = 'Type is required';
+      }
+      if (!this.letterForm.subject?.trim()) {
+        errors.subject = 'Subject is required';
+      }
+      if (!this.letterForm.date) {
+        errors.date = 'Date is required';
+      }
+      if (!this.letterForm.content?.trim()) {
+        errors.content = 'Content is required';
+      }
+      if (!this.letterForm.recipients?.some(r => r.id && r.name)) {
+        errors.recipients = 'Please select at least one recipient';
+      }
+      if (!this.letterForm.sender_name?.trim()) {
+        errors.sender_name = 'Sender name is required';
+      }
+      if (!this.letterForm.sender_position?.trim()) {
+        errors.sender_position = 'Sender position is required';
+      }
+    
+      return errors;
+    },
+
+    // Update the updateRecipient method
+    updateRecipient(index, recipientId) {
+      if (!recipientId || recipientId === '') {
+        this.letterForm.recipients[index] = { id: '', name: '', position: '' };
+        return;
+      }
+      
+      const selectedRecipient = this.recipientsList.find(r => 
+        r.id === (typeof recipientId === 'string' ? parseInt(recipientId) : recipientId)
+      );
+      
+      if (selectedRecipient) {
+        this.letterForm.recipients[index] = {
+          id: selectedRecipient.id,
+          name: selectedRecipient.name || '',
+          position: selectedRecipient.position || ''
+        };
       }
     }
   } // Add closing brace for methods
