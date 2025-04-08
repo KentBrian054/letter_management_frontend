@@ -154,7 +154,7 @@ const displayedPages = computed(() => {
 
 const fetchRecipients = async () => {
   try {
-    const response = await axios.get('http://192.168.5.68:8000/api/recipients')
+    const response = await axios.get('http://192.168.5.26:8000/api/recipients')
     console.log('API Response:', response.data)
     
     if (response.data && response.data.data) {
@@ -185,7 +185,7 @@ const handleEdit = (recipient) => {
 
 const handleDelete = async (id) => {
   try {
-    await axios.delete(`http://192.168.5.68:8000/api/recipients/${id}`)
+    await axios.delete(`http://192.168.5.26:8000/api/recipients/${id}`)
     await fetchRecipients()
   } catch (error) {
     console.error('Error deleting recipient:', error)

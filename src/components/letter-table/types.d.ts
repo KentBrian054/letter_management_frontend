@@ -9,8 +9,29 @@ declare module '@vue/runtime-core' {
   }
 }
 
+// Add interfaces for Letter and Recipient
+interface Recipient {
+  id: number;
+  name: string;
+  position?: string;
+}
+
+interface Letter {
+  id?: number;
+  title: string;
+  type: string;
+  subject: string;
+  date: string;
+  content: string;
+  sender_name: string;
+  sender_position: string;
+  recipients: Recipient[];
+}
+
 declare module './icons' {
   export const EditIcon: any
   export const PreviewDownloadIcon: any
   export const DeleteIcon: any
 }
+
+export { Letter, Recipient }
