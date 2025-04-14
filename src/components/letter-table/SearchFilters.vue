@@ -63,14 +63,6 @@
           placeholder="Search by recipient..."
         />
       </div>
-
-      <!-- New Letter Button -->
-      <button
-        @click="$emit('new-letter')"
-        class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex-shrink-0"
-      >
-        New Letter
-      </button>
     </div>
   </div>
 </template>

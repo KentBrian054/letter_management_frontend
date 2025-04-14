@@ -111,7 +111,7 @@
                       >
                         <option value="">Select Recipient</option>
                         <option 
-                          v-for="r in recipientsList" 
+                          v-for="r in filteredRecipientsList" 
                           :key="r.id" 
                           :value="r.id"
                         >
@@ -215,64 +215,71 @@
     </div>
   </div>
 
-  <!-- Save/Update Confirmation Modal -->
-  <div v-if="showConfirmModal" class="fixed inset-0 z-[60] overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-      <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
-      <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-        <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-          <div class="sm:flex sm:items-start">
-            <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-green-100 sm:mx-0 sm:h-10 sm:w-10">
-              <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-              <h3 class="text-lg leading-6 font-medium text-gray-900">
-                Confirm {{ editMode ? 'Update' : 'Save' }}
-              </h3>
-              <div class="mt-2">
-                <p class="text-sm text-gray-500">
-                  Are you sure you want to {{ editMode ? 'update' : 'save' }} this letter?
-                </p>
-              </div>
-            </div>
+  <!-- Update the Save/Update Confirmation Modal -->
+  <div v-if="showConfirmModal" class="fixed inset-0 z-[60] overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen p-4">
+      <div class="fixed inset-0 bg-black/30 backdrop-blur-sm"></div>
+      <div class="relative bg-white rounded-lg shadow-xl w-full max-w-md">
+        <div class="p-6 text-center">
+          <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100">
+            <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
           </div>
-        </div>
-        <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-          <button
-            type="button"
-            @click="confirmSubmit"
-            class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm"
-          >
-            {{ editMode ? 'Update' : 'Save' }}
-          </button>
-          <button
-            type="button"
-            @click="showConfirmModal = false"
-            class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-          >
-            <!-- Replace the nested button with a div or span -->
-            <div
-              @click="$emit('close')"
-              class="px-4 py-1.5 border border-gray-300 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50 cursor-pointer"
+          <h3 class="mt-4 text-lg font-medium text-gray-900">
+            Confirm {{ editMode ? 'Update' : 'Save' }}
+          </h3>
+          <p class="mt-2 text-sm text-gray-500">
+            Are you sure you want to {{ editMode ? 'update' : 'save' }} this letter?
+          </p>
+          <div class="mt-6 flex justify-center gap-3">
+            <button
+              type="button"
+              @click="showConfirmModal = false"
+              class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md"
             >
               Cancel
-            </div>
-          </button>
+            </button>
+            <button
+              type="button"
+              @click="confirmSubmit"
+              class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md"
+            >
+              {{ editMode ? 'Update' : 'Save' }}
+            </button>
+          </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Success Message -->
-  <div v-if="showSuccess" class="fixed inset-0 flex items-center justify-center">
-    <div class="bg-white rounded-lg p-6 shadow-xl">
-      <div class="text-center">
-        <svg class="mx-auto h-12 w-12 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-        </svg>
-        <h3 class="mt-2 text-lg font-medium text-gray-900">{{ editMode ? 'Letter updated successfully!' : 'Letter saved successfully!' }}</h3>
+  <!-- Add Success Message Modal -->
+  <div v-if="showSuccess" class="fixed inset-0 z-[60] overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen p-4">
+      <div class="fixed inset-0 bg-black/30 backdrop-blur-sm"></div>
+      <div class="relative bg-white rounded-lg shadow-xl w-full max-w-md">
+        <div class="p-6 text-center">
+          <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100">
+            <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h3 class="mt-4 text-lg font-medium text-gray-900">
+            {{ editMode ? 'Letter Updated!' : 'Letter Saved!' }}
+          </h3>
+          <p class="mt-2 text-sm text-gray-500">
+            Your letter has been successfully {{ editMode ? 'updated' : 'saved' }}.
+          </p>
+          <div class="mt-6">
+            <button
+              type="button"
+              @click="showSuccess = false"
+              class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md"
+            >
+              Close
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -285,7 +292,7 @@ import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import { nextTick } from 'vue'
 
 const apiClient = axios.create({
-  baseURL: 'http://192.168.5.26:8000/api',
+  baseURL: 'http://192.168.5.112:8000/api',
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
@@ -376,26 +383,64 @@ export default {
 
     // Update the fetchRecipients method
     async fetchRecipients() {
-      try {
-        const response = await apiClient.get('/recipients/');  // Ensure trailing slash and no undefined
+      let retries = 3;
+      const retryDelay = 2000; // 2 seconds between retries
+      
+      while (retries > 0) {
+        try {
+          const response = await apiClient.get('/recipients/', {
+            timeout: 10000, // 10 seconds timeout
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+              'X-Requested-With': 'XMLHttpRequest'
+            }
+          });
+      
+          if (response.data && Array.isArray(response.data.data)) {
+            this.recipientsList = response.data.data;
+            return; // Success, exit the retry loop
+          } else if (Array.isArray(response.data)) {
+            this.recipientsList = response.data;
+            return; // Success with direct array
+          }
+      
+          throw new Error('Invalid response format');
+      
+        } catch (error) {
+          retries--;
+          console.error(`Recipient fetch attempt failed. Retries remaining: ${retries}`, error);
+      
+          if (retries === 0) {
+            this.recipientsList = [];
+            if (error.code === 'ERR_NETWORK') {
+              alert('Network connection error. Please check your internet connection and try again.');
+            } else if (error.response?.status === 404) {
+              alert('Recipients endpoint not found. Please check your API configuration.');
+            } else {
+              alert('Unable to fetch recipients. Please try again later.');
+            }
+            return;
+          }
+      
+          // Wait before retrying
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+          console.log(`Retrying recipients fetch... (${retries} attempts remaining)`);
+        }
+      }
+    },
+
+    computed: {
+      filteredRecipientsList() {
+        const selectedRecipients = this.letterForm.recipients
+          .filter(r => r.id && r.name && r.position);
         
-        if (response.data && Array.isArray(response.data.data)) {
-          this.recipientsList = response.data.data;
-        } else if (Array.isArray(response.data)) {
-          this.recipientsList = response.data;
-        } else {
-          console.error('Unexpected response format:', response.data);
-          this.recipientsList = [];
-        }
-      } catch (error) {
-        console.error('Error fetching recipients:', error);
-        this.recipientsList = [];
-        // Use a more user-friendly error handling
-        if (error.response?.status === 404) {
-          alert('Recipients endpoint not found. Please check the API configuration.');
-        } else {
-          alert('Unable to fetch recipients. Please check your connection and try again.');
-        }
+        return this.recipientsList.filter(recipient => 
+          !selectedRecipients.some(selected => 
+            selected.name === recipient.name && 
+            selected.position === recipient.position
+          )
+        );
       }
     },
 
@@ -410,182 +455,26 @@ export default {
         r.id === (typeof recipientId === 'string' ? parseInt(recipientId) : recipientId)
       );
       
-      if (selectedRecipient) {
-        this.letterForm.recipients[index] = {
-          id: selectedRecipient.id,
-          name: selectedRecipient.name || '',
-          position: selectedRecipient.position || ''
-        };
-      }
-    },
-
-    // Add formatDateForInput method if not exists
-    formatDateForInput(date) {
-      if (!date) return new Date().toISOString().split('T')[0];
-      return new Date(date).toISOString().split('T')[0];
-    },  // Add comma here
-
-    validateForm() {
-      const errors = {};
-      if (!this.letterForm.title?.trim()) {
-        errors.title = 'Title is required';
-      }
-      if (!this.letterForm.type) {
-        errors.type = 'Type is required';
-      }
-      if (!this.letterForm.subject?.trim()) {
-        errors.subject = 'Subject is required';
-      }
-      if (!this.letterForm.date) {
-        errors.date = 'Date is required';
-      }
-      if (!this.letterForm.content?.trim()) {
-        errors.content = 'Content is required';
-      }
-      if (!this.letterForm.recipients?.some(r => r.id)) {
-        errors.recipients = 'At least one recipient is required';
-      }
-      if (!this.letterForm.sender_name?.trim()) {
-        errors.sender_name = 'Sender name is required';
-      }
-      if (!this.letterForm.sender_position?.trim()) {
-        errors.sender_position = 'Sender position is required';
-      }
+      if (!selectedRecipient) return;
     
-      return errors;
-    },
-
-    // Update the handleBack method
-    handleBack() {
-      if (this.isSubmitting) return;
-      this.$emit('close');
-    },  // Add comma here
-    
-    async handleSubmit(e) {
-      e.preventDefault();
-      if (this.isSubmitting) return;
+      // Check for duplicates by name and position
+      const isDuplicate = this.letterForm.recipients.some((r, i) => 
+        i !== index && 
+        r.name === selectedRecipient.name && 
+        r.position === selectedRecipient.position
+      );
       
-      // Validate form
-      const errors = this.validateForm();
-      if (Object.keys(errors).length > 0) {
-        this.errors = errors;
-        return;
-      }
-
-      this.showConfirmModal = true;
-    },  // Add comma here
-
-    // Update the confirmSubmit method
-    async confirmSubmit() {
-      try {
-        this.isSubmitting = true;
-        
-        // Validate recipients more strictly
-        const validRecipients = this.letterForm.recipients.filter(r => r.id && r.name);
-        if (!validRecipients.length) {
-          throw new Error('Please select at least one recipient');
-        }
-
-        // Format the data for submission
-        const formData = {
-          title: this.letterForm.title,
-          type: this.letterForm.type,
-          subject: this.letterForm.subject,
-          date: this.formatDateForInput(this.letterForm.date),
-          content: this.letterForm.content,
-          sender_name: this.letterForm.sender_name,
-          sender_position: this.letterForm.sender_position,
-          recipients: validRecipients.map(r => ({
-            id: Number(r.id),
-            name: r.name,
-            position: r.position || ''
-          }))
-        };
-
-        console.log('Sending data:', formData);
-
-        if (this.editMode) {
-          const response = await apiClient.put(`/letters/${this.letter.id}`, formData);
-          if (response.data.success) {
-            this.$emit('update-letter', response.data.data);
-          } else {
-            throw new Error(response.data.message || 'Failed to update letter');
-          }
-        } else {
-          const response = await apiClient.post('/letters', formData);
-          if (response.data.success) {
-            this.$emit('save-letter', response.data.data);
-          } else {
-            throw new Error(response.data.message || 'Failed to save letter');
-          }
-        }
-
-        this.showConfirmModal = false;
-        this.showSuccess = true;
-        
-        setTimeout(() => {
-          this.showSuccess = false;
-          this.$emit('close');
-          this.$emit('refresh-letters');
-        }, 1500);
-
-      } catch (error) {
-        console.error('Error saving letter:', error);
-        alert(error.message || 'Failed to save letter. Please ensure all recipients are properly selected.');
-      } finally {
-        this.isSubmitting = false;
-      }
-    },
-
-    // Update the validateForm method
-    validateForm() {
-      const errors = {};
-      if (!this.letterForm.title?.trim()) {
-        errors.title = 'Title is required';
-      }
-      if (!this.letterForm.type) {
-        errors.type = 'Type is required';
-      }
-      if (!this.letterForm.subject?.trim()) {
-        errors.subject = 'Subject is required';
-      }
-      if (!this.letterForm.date) {
-        errors.date = 'Date is required';
-      }
-      if (!this.letterForm.content?.trim()) {
-        errors.content = 'Content is required';
-      }
-      if (!this.letterForm.recipients?.some(r => r.id && r.name)) {
-        errors.recipients = 'Please select at least one recipient';
-      }
-      if (!this.letterForm.sender_name?.trim()) {
-        errors.sender_name = 'Sender name is required';
-      }
-      if (!this.letterForm.sender_position?.trim()) {
-        errors.sender_position = 'Sender position is required';
-      }
-    
-      return errors;
-    },
-
-    // Update the updateRecipient method
-    updateRecipient(index, recipientId) {
-      if (!recipientId || recipientId === '') {
+      if (isDuplicate) {
+        alert('This recipient is already selected');
         this.letterForm.recipients[index] = { id: '', name: '', position: '' };
         return;
       }
-      
-      const selectedRecipient = this.recipientsList.find(r => 
-        r.id === (typeof recipientId === 'string' ? parseInt(recipientId) : recipientId)
-      );
-      
-      if (selectedRecipient) {
-        this.letterForm.recipients[index] = {
-          id: selectedRecipient.id,
-          name: selectedRecipient.name || '',
-          position: selectedRecipient.position || ''
-        };
-      }
+    
+      this.letterForm.recipients[index] = {
+        id: selectedRecipient.id,
+        name: selectedRecipient.name || '',
+        position: selectedRecipient.position || ''
+      };
     }
   } // Add closing brace for methods
 } // Add closing brace for export default
@@ -596,3 +485,4 @@ export default {
   width: 100%;
 }
 </style>
+

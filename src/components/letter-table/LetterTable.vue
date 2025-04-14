@@ -1,7 +1,20 @@
 
 <template>
   <div class="p-6">
-    <!-- Search Filters Component with New Button -->
+    <!-- Add New Letter button above SearchFilters -->
+    <div class="flex justify-end mb-4">
+      <button
+        @click="handleNewLetterClick"
+        class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 flex items-center gap-2"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg>
+        New Letter
+      </button>
+    </div>
+
+    <!-- Update SearchFilters to remove the new letter button -->
     <SearchFilters
       :filters="{
         searchQuery,
@@ -11,7 +24,6 @@
         dateRange
       }"
       @update:filters="updateFilters"
-      @new-letter="handleNewLetterClick"
       class="mb-6"
     />
 
@@ -614,39 +626,52 @@ export default {
 
     async exportToWord(letter) {
       try {
-        console.log('Exporting letter to Word:', letter.id);
+        console.log('Exporting letter:', letter); // Add this debug log
         
+        // First try to get the Word document
         const response = await apiClient.get(`/letters/${letter.id}/export-word`, {
-          responseType: 'blob',
+          responseType: 'arraybuffer',
           headers: {
             'Accept': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            'Content-Type': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest'
+            'X-Requested-With': 'XMLHttpRequest',
+            // Add these headers to ensure letter data is sent
+            'Letter-Title': letter.title || '',
+            'Letter-Subject': letter.subject || '',
+            'Letter-For': Array.isArray(letter.recipients) 
+              ? letter.recipients.map(r => r.name).join(', ')
+              : (letter.recipients?.name || '')
           }
         });
+
+        // Log response details
+        console.log('Export response:', {
+          headers: response.headers,
+          contentType: response.headers['content-type'],
+          size: response.data?.byteLength
+        });
     
-        // Validate response
-        if (!response.data || response.data.size === 0) {
-          throw new Error('Empty document received from server');
+        // Check if we got a valid response
+        if (!response.data || response.data.byteLength === 0) {
+          throw new Error('Server returned empty document');
         }
-    
-        console.log('Word document size:', response.data.size);
     
         // Create blob with proper MIME type
         const blob = new Blob([response.data], { 
           type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
         });
     
+        // Verify blob size
         if (blob.size === 0) {
-          throw new Error('Generated document is empty');
+          throw new Error('Failed to generate document');
         }
     
-        // Create and trigger download
+        // Create download link
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
         link.download = `${letter.title || 'letter'}_${new Date().toISOString().split('T')[0]}.docx`;
         
+        // Trigger download
         document.body.appendChild(link);
         link.click();
         
@@ -662,9 +687,24 @@ export default {
           response: error.response,
           status: error.response?.status,
           contentType: error.response?.headers?.['content-type'],
-          size: error.response?.data?.size
+          data: error.response?.data,
+          size: error.response?.data?.byteLength || 0
         });
-        alert('Failed to export Word document. Please try again.');
+    
+        // Check if we received an error message from the server
+        if (error.response?.data) {
+          try {
+            const decoder = new TextDecoder('utf-8');
+            const errorText = decoder.decode(error.response.data);
+            const errorJson = JSON.parse(errorText);
+            alert(errorJson.message || 'Failed to export document');
+            return;
+          } catch (e) {
+            // If we can't parse the error, fall through to default message
+          }
+        }
+        
+        alert('Failed to export Word document. Please check if the letter exists and try again.');
       }
     }
   }
