@@ -20,48 +20,62 @@
         Back
       </button>
       
-      <!-- Add recipient fields -->
+      <!-- Enhanced Recipients Section -->
       <div class="space-y-4 mt-4">
-        <div class="flex items-center justify-between">
-          <label class="block text-sm font-medium text-gray-700">FOR:</label>
-          <button
-            type="button"
-            @click="addRecipient"
-            class="text-blue-600 hover:text-blue-700 text-sm"
-          >
-            + Add Recipient
-          </button>
-        </div>
-
-        <div v-for="(recipient, index) in formData.recipients" :key="index" class="flex gap-2">
-          <div class="flex-1">
-            <div v-if="recipient.name" class="flex items-center gap-2 p-2 bg-gray-50 rounded-md">
-              <span class="text-sm text-gray-700">
-                {{ recipient.name }} - {{ recipient.position }}
-              </span>
+        <div class="mb-4">
+          <div class="flex justify-between items-center mb-2">
+            <label class="block text-sm font-medium text-gray-700">FOR:</label>
+            <button
+              @click="addRecipient"
+              class="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md text-blue-600 hover:text-blue-700 focus:outline-none"
+            >
+              <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+              Add Recipient
+            </button>
+          </div>
+          
+          <div class="space-y-2">
+            <div 
+              v-for="(recipient, index) in formData.recipients" 
+              :key="index"
+              class="relative flex items-center gap-2"
+            >
+              <div class="flex-1">
+                <select
+                  v-model="formData.recipients[index].id"
+                  @change="updateRecipient(index, $event.target.value)"
+                  class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                >
+                  <option value="" disabled>Select Recipient</option>
+                  <option
+                    v-for="availableRecipient in availableRecipients"
+                    :key="availableRecipient.id"
+                    :value="availableRecipient.id"
+                  >
+                    {{ availableRecipient.name }} - {{ availableRecipient.position }}
+                  </option>
+                </select>
+                
+                <!-- Display selected recipient details -->
+                <div v-if="formData.recipients[index].id" class="mt-2 text-sm text-gray-600">
+                  <p class="font-medium">{{ formData.recipients[index].name }}</p>
+                  <p class="text-gray-500">{{ formData.recipients[index].position }}</p>
+                </div>
+              </div>
+              
               <button
-                type="button"
                 @click="removeRecipient(index)"
-                class="text-red-600 hover:text-red-700"
+                class="inline-flex items-center p-1 text-red-600 hover:text-red-800 rounded-full hover:bg-red-50"
+                :disabled="formData.recipients.length === 1"
+                :class="{ 'opacity-50 cursor-not-allowed': formData.recipients.length === 1 }"
               >
-                ×
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </div>
-            <select
-              v-else
-              v-model="recipient.id"
-              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              @change="updateRecipient(index, recipient.id)"
-            >
-              <option value="">Select Recipient</option>
-              <option 
-                v-for="availableRecipient in availableRecipients" 
-                :key="availableRecipient.id"
-                :value="availableRecipient.id"
-              >
-                {{ availableRecipient.name }} - {{ availableRecipient.position }}
-              </option>
-            </select>
           </div>
         </div>
       </div>
@@ -100,70 +114,44 @@ export default {
       }
     }
   },
-  computed: {
-    editMode() {
-      return !!this.letter?.id
-    },
-    availableRecipients() {
-      // Get all recipients from props and log for debugging
-      console.log('All recipients from props:', this.recipients);
-      console.log('Current formData recipients:', this.formData.recipients);
-
-      const allRecipients = this.recipients || [];
-      const selectedIds = this.formData.recipients
-        .filter(r => r.id)
-        .map(r => r.id);
-
-      // Return all recipients that are either not selected or currently being edited
-      return allRecipients.filter(recipient => {
-        const isSelected = selectedIds.includes(recipient.id);
-        const isBeingEdited = this.formData.recipients.some(r => r.id === recipient.id);
-        return !isSelected || isBeingEdited;
-      });
-    }
-  },
-  watch: {
-    letter: {
-      handler(newVal) {
-        if (newVal) {
-          let recipients = newVal.recipients || [];
-          
-          // Ensure recipients is an array and has the correct structure
-          recipients = Array.isArray(recipients) ? recipients : [recipients];
-          
-          this.formData = {
-            ...newVal,
-            recipients: recipients.length > 0 
-              ? recipients.map(r => ({
-                  id: r.id,
-                  name: r.name || '',
-                  position: r.position || ''
-                }))
-              : [{ id: '', name: '', position: '' }]
-          };
-        }
-      },
-      immediate: true
-    }
+  mounted() {
+    // Initialize recipients data when component mounts
+    this.initializeRecipients();
   },
   methods: {
-    addRecipient() {
-      this.formData.recipients.push({ id: '', name: '', position: '' });
-    },
-    removeRecipient(index) {
-      this.formData.recipients.splice(index, 1);
-      if (this.formData.recipients.length === 0) {
-        this.formData.recipients.push({ id: '', name: '', position: '' });
+    initializeRecipients() {
+      if (this.letter?.recipients?.length) {
+        this.formData.recipients = this.letter.recipients.map(r => ({
+          id: r.id || '',
+          name: r.name || '',
+          position: r.position || ''
+        }));
+      } else {
+        this.formData.recipients = [{ id: '', name: '', position: '' }];
       }
     },
     updateRecipient(index, recipientId) {
-      const selectedRecipient = this.recipients.find(r => r.id === recipientId);
+      const selectedRecipient = this.recipients.find(r => r.id.toString() === recipientId.toString());
       if (selectedRecipient) {
-        this.formData.recipients[index] = {
+        // Use Vue.set to ensure reactivity
+        this.$set(this.formData.recipients, index, {
           id: selectedRecipient.id,
           name: selectedRecipient.name,
           position: selectedRecipient.position
-        };
+        });
+      }
+    },
+    addRecipient() {
+      const availableCount = this.availableRecipients.length;
+      const currentCount = this.formData.recipients.length;
+      
+      if (currentCount < availableCount) {
+        this.formData.recipients.push({ id: '', name: '', position: '' });
+      }
+    },
+    removeRecipient(index) {
+      if (this.formData.recipients.length > 1) {
+        this.formData.recipients.splice(index, 1);
       }
     },
     close() {
@@ -202,8 +190,52 @@ export default {
       };
       this.close();
     }
+  },
+  computed: {
+    availableRecipients() {
+      const allRecipients = this.recipients || [];
+      const selectedIds = this.formData.recipients
+        .filter(r => r.id)
+        .map(r => r.id.toString());
+
+      return allRecipients.filter(recipient => {
+        const recipientId = recipient.id.toString();
+        return !selectedIds.includes(recipientId) || 
+          this.formData.recipients.some(r => r.id.toString() === recipientId);
+      });
+    }
+  },
+  watch: {
+    recipients: {
+      immediate: true,
+      handler(newRecipients) {
+        if (newRecipients?.length && !this.letter?.id) {
+          // Only initialize if this is a new letter
+          this.initializeRecipients();
+        }
+      }
+    },
+    
+    letter: {
+      immediate: true,
+      handler(newLetter) {
+        if (newLetter) {
+          const recipients = newLetter.recipients || [];
+          this.formData = {
+            ...newLetter,
+            recipients: recipients.length > 0 
+              ? recipients.map(r => ({
+                  id: r.id || '',
+                  name: r.name || '',
+                  position: r.position || ''
+                }))
+              : [{ id: '', name: '', position: '' }]
+          };
+        }
+      }
+    }
   }
-}
+};
 </script>
 
 <style scoped>
@@ -215,5 +247,22 @@ export default {
 .modal-enter-from,
 .modal-leave-to {
   opacity: 0;
+}
+
+/* Add these new styles */
+.recipient-select {
+  transition: all 0.2s ease-in-out;
+}
+
+.recipient-select:hover {
+  border-color: #60A5FA;
+}
+
+.recipient-remove-button {
+  transition: all 0.2s ease-in-out;
+}
+
+.recipient-remove-button:hover {
+  background-color: #FEE2E2;
 }
 </style>

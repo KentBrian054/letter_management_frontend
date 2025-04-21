@@ -273,7 +273,7 @@ import { nextTick } from 'vue'
 import SuccessMessageModal from './modals/SuccessMessageModal.vue'  // Add this import
 
 const apiClient = axios.create({
-  baseURL: 'http://192.168.5.112:8000/api',
+  baseURL: 'http://192.168.5.71:8000/api',
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',

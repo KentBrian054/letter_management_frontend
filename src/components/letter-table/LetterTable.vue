@@ -176,7 +176,7 @@
       v-if="showEditModal"
       :show="showEditModal"
       :letter="selectedLetter"
-      :recipients="recipients"
+      :recipients="availableRecipients" 
       @update:show="showEditModal = $event"
       @save="handleLetterSaved"
     />
@@ -829,59 +829,55 @@ export default {
       }
     },
 
-    // Update the conversion method
     async convertPDFToWord(letter) {
       try {
         this.isPreviewLoading = true;
-        const response = await apiClient.post(`/letters/${letter.id}/convert-to-word/`, {
-          letter_id: letter.id
-        }, {
+        
+        if (!letter?.id) {
+          throw new Error('Invalid letter ID');
+        }
+
+        // Get the converted file directly with secure headers
+        const response = await apiClient.get(`/letters/${letter.id}/convert-to-word`, {
+          responseType: 'blob',
           headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
+            'Accept': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'Content-Security-Policy': "default-src 'self'; img-src 'self' blob: data:;"
           }
         });
 
-        console.log('Server Response:', response.data); // Debug log
-
-        if (!response.data) {
-          throw new Error('Empty response from server');
-        }
-
-        if (response.data.error) {
-          throw new Error(response.data.error);
-        }
-
-        const fileUrl = response.data.file_url;
-        if (!fileUrl) {
-          throw new Error('No converted file URL received');
-        }
-
-        // Download file
-        const downloadResponse = await apiClient.get(fileUrl, {
-          responseType: 'blob'
-        });
-
-        const blob = new Blob([downloadResponse.data], {
+        // Create secure blob URL
+        const blob = new Blob([response.data], {
           type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
         });
         
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${letter.title || 'document'}_converted.docx`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
-        
+        // Use secure download method
+        if (window.navigator && window.navigator.msSaveOrOpenBlob) {
+          // For IE
+          window.navigator.msSaveOrOpenBlob(blob, `${letter.title || 'document'}_converted.docx`);
+        } else {
+          // For modern browsers
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.style.display = 'none';
+          link.href = url;
+          link.download = `${letter.title || 'document'}_converted.docx`;
+          
+          // Use secure context
+          document.body.appendChild(link);
+          link.click();
+          
+          // Clean up
+          setTimeout(() => {
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+          }, 100);
+        }
+
         return { success: true };
       } catch (error) {
-        console.error('Detailed conversion error:', {
-          message: error.message,
-          response: error.response?.data,
-          status: error.response?.status
-        });
+        console.error('Conversion error:', error);
+        alert('Failed to convert PDF to Word. Please try again.');
         throw error;
       } finally {
         this.isPreviewLoading = false;
@@ -891,27 +887,26 @@ export default {
 };
 </script>
 
-methods: {
-  async handleConvertPDFToWord(letter, callback) {
-    try {
-      const response = await axios.post(`/api/letters/${letter.id}/convert-to-word`);
-      callback(response.data);
-      
-      if (response.data.success) {
-        // Handle successful conversion
-        const link = document.createElement('a');
-        link.href = response.data.file_url;
-        link.download = `letter_${letter.id}.docx`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      }
-    } catch (error) {
-      callback({
-        success: false,
-        message: error.response?.data?.message || 'Conversion failed. Please try again.'
-      });
+
+async handleConvertPDFToWord(letter, callback) {
+  try {
+    const response = await axios.post(`/api/letters/${letter.id}/convert-to-word`);
+    callback(response.data);
+    
+    if (response.data.success) {
+      // Handle successful conversion
+      const link = document.createElement('a');
+      link.href = response.data.file_url;
+      link.download = `letter_${letter.id}.docx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
+  } catch (error) {
+    callback({
+      success: false,
+      message: error.response?.data?.message || 'Conversion failed. Please try again.'
+    });
   }
 }
 
@@ -922,7 +917,6 @@ methods: {
       @cancel="showDeleteConfirmModal = false"
     />
 
-// Add URL validation helper at the bottom of the file
 function isValidUrl(url) {
   try {
     new URL(url);
@@ -931,3 +925,5 @@ function isValidUrl(url) {
     return false;
   }
 }
+
+

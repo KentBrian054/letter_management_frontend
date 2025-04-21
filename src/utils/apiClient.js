@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const apiClient = axios.create({
-  baseURL: 'http://192.168.5.112:8000/api',
+  baseURL: 'http://192.168.5.71:8000/api',
   headers: {
     'Accept': 'application/json',
     'Content-Type': 'application/json',
@@ -75,8 +75,12 @@ apiClient.interceptors.response.use(
   response => {
     const contentType = response.headers['content-type'];
     
+    // Skip modal handling for Word conversion
+    if (response.config.url?.includes('/convert-to-word')) {
+      return response;
+    }
+    
     if (contentType?.includes('text/html')) {
-      // For HTML content from blade template
       const reader = new FileReader();
       reader.onload = function() {
         const win = window.open('', '_blank');
@@ -89,7 +93,6 @@ apiClient.interceptors.response.use(
       return response;
     } 
     else if (contentType?.includes('application/pdf')) {
-      // For PDF content
       const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
       window.open(url, '_blank');
       setTimeout(() => window.URL.revokeObjectURL(url), 3000);
@@ -328,6 +331,40 @@ apiClient.interceptors.request.use(
       config.data = JSON.stringify(data);
     }
     return config;
+  },
+  error => Promise.reject(error)
+);
+
+// Modify request interceptor for document endpoints
+apiClient.interceptors.request.use(
+  config => {
+    if (config.url?.includes('/convert-to-word')) {
+      config.headers = {
+        ...config.headers,
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      };
+    }
+    return config;
+  },
+  error => Promise.reject(error)
+);
+
+// Add specific handler for conversion responses
+apiClient.interceptors.response.use(
+  response => {
+    if (response.config.url?.includes('/convert-to-word')) {
+      if (response.data?.file_url) {
+        return {
+          ...response,
+          data: {
+            success: true,
+            file_url: response.data.file_url
+          }
+        };
+      }
+    }
+    return response;
   },
   error => Promise.reject(error)
 );
