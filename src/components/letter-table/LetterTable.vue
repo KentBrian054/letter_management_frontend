@@ -47,7 +47,7 @@
                   <LetterActions 
                     :letter="letter"
                     :is-loading="isPreviewLoading"
-                    @edit="openEditModal" <!-- This triggers openEditModal -->
+                    @edit="openEditModal"
                     @preview-pdf="previewPDF"
                     @convert-pdf-to-word="convertPDFToWord"
                     @delete="confirmDelete"
@@ -173,11 +173,9 @@
 
     <!-- Update the LetterEditModal component usage -->
     <LetterEditModal
-      v-if="showEditModal"
-      :show="showEditModal"
+      v-model="showEditModal"
       :letter="selectedLetter"
-      :recipients="availableRecipients" 
-      @update:show="showEditModal = $event"
+      :recipients="recipients"
       @save="handleLetterSaved"
     />
   </div>
@@ -612,30 +610,8 @@ export default {
 
     // Add edit modal method
     openEditModal(letter) {
-      try {
-        if (!letter?.id) {
-          console.error('Invalid letter data:', letter);
-          return;
-        }
-        this.selectedLetter = {
-          id: letter.id,
-          title: letter.title || '',
-          type: letter.type || '',
-          subject: letter.subject || '',
-          date: letter.date || new Date().toISOString().split('T')[0],
-          recipients: (letter.recipients || []).map(r => ({
-            id: r?.id || '',
-            name: r?.name || '',
-            position: r?.position || ''
-          })),
-          content: letter.content || '',
-          sender_name: letter.sender_name || '',
-          sender_position: letter.sender_position || ''
-        };
-        this.showEditModal = true; // Show the edit modal
-      } catch (error) {
-        console.error('Error opening edit modal:', error);
-      }
+      this.selectedLetter = { ...letter };
+      this.showEditModal = true;
     },
 
     previewPDF(letter) {

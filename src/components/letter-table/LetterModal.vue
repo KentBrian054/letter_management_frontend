@@ -314,6 +314,10 @@ export default {
     letter: {
       type: Object,
       default: () => ({})
+    },
+    editMode: {
+      type: Boolean,
+      default: false
     }
   },
   data() {
@@ -332,7 +336,6 @@ export default {
       showConfirmModal: false,
       showSuccess: false,  // Keep this for controlling visibility
       recipientsList: [],
-      editMode: false,
       isSubmitting: false
     }
   },
@@ -408,59 +411,31 @@ export default {
     },
     async fetchRecipients() {
       try {
-        const response = await apiClient.get('/recipients/');
-        console.log('Recipients response:', response.data);
-        
-        // More robust response data validation
-        if (response && response.data) {
-          if (Array.isArray(response.data.data)) {
-            this.recipientsList = response.data.data;
-          } else if (Array.isArray(response.data)) {
-            this.recipientsList = response.data;
-          } else {
-            this.recipientsList = []; // Set empty array as fallback
-            console.warn('Unexpected response format:', response.data);
-          }
-        } else {
-          this.recipientsList = []; // Set empty array as fallback
-          console.warn('Empty or invalid response');
-        }
+        const response = await apiClient.get('/recipients');
+        // Ensure consistent data structure
+        this.recipientsList = response.data.data || response.data;
       } catch (error) {
         console.error('Error fetching recipients:', error);
-        this.recipientsList = []; // Set empty array on error
-        // More user-friendly error message
-        alert('Unable to load recipients. Please check your connection and try again.');
+        this.recipientsList = [];
       }
     },
     updateRecipient(index, recipientId) {
-      if (!recipientId || recipientId === '') {
-        this.letterForm.recipients[index] = { id: '', name: '', position: '' };
-        return;
-      }
+      // Add null check and data validation
+      if (!recipientId) return;
       
       const selectedRecipient = this.recipientsList.find(r => 
-        r.id === (typeof recipientId === 'string' ? parseInt(recipientId) : recipientId)
+        r.id === parseInt(recipientId)
       );
       
-      if (!selectedRecipient) return;
-    
-      // Check for duplicates using ID instead of name and position
-      const isDuplicate = this.letterForm.recipients.some((r, i) => 
-        i !== index && r.id === selectedRecipient.id
-      );
-      
-      if (isDuplicate) {
-        alert('This recipient is already selected');
-        this.letterForm.recipients[index] = { id: '', name: '', position: '' };
-        return;
+      if (selectedRecipient) {
+        this.letterForm.recipients[index] = {
+          id: selectedRecipient.id,
+          name: selectedRecipient.name,
+          position: selectedRecipient.position
+        };
       }
-    
-      this.letterForm.recipients[index] = {
-        id: selectedRecipient.id,
-        name: selectedRecipient.name,
-        position: selectedRecipient.position
-      };
-    },  // Add comma here
+    }
+  },  // Add comma here
 
     handleBack() {
       // Reset form and close modal
@@ -477,169 +452,70 @@ export default {
       };
       this.closeModal();
     },
-    handleSubmit() {
-      // Reset errors
-      this.errors = {};
-      this.showConfirmModal = true;
-    },
-
-    async generatePDF() {
-      const container = document.createElement('div');
-      container.className = 'pdf-content';
-      
-      // Create letter structure with proper formatting
-      const letterHTML = `
-        <div class="letter-header">
-          <h1 style="font-size: 18px; margin-bottom: 20px;">${this.letterForm.title}</h1>
-          <div style="margin-bottom: 15px;">
-            <strong>Type:</strong> ${this.letterForm.type}<br>
-            <strong>Date:</strong> ${this.letterForm.date}<br>
-            <strong>Subject:</strong> ${this.letterForm.subject}
-          </div>
-          <div style="margin-bottom: 15px;">
-            <strong>To:</strong><br>
-            ${this.letterForm.recipients.map(r => 
-              `${r.name}<br>${r.position}`
-            ).join('<br>')}
-          </div>
-        </div>
-        <div class="letter-content" style="margin: 30px 0;">
-          ${this.letterForm.content}
-        </div>
-        <div class="letter-footer" style="margin-top: 40px;">
-          <div style="text-align: left;">
-            <strong>${this.letterForm.sender_name}</strong><br>
-            ${this.letterForm.sender_position}
-          </div>
-        </div>
-      `;
-      
-      container.innerHTML = letterHTML;
-
-      const opt = {
-        margin: [25, 25],
-        filename: `${this.letterForm.title || 'letter'}.pdf`,
-        image: { type: 'jpeg', quality: 1 },
-        html2canvas: { 
-          scale: 2,
-          useCORS: true,
-          letterRendering: true,
-          scrollY: 0,
-          scrollX: 0,
-          windowWidth: 1024
-        },
-        jsPDF: { 
-          unit: 'mm', 
-          format: 'a4', 
-          orientation: 'portrait',
-          putOnlyUsedFonts: true
-        }
-      };
-
-      const style = document.createElement('style');
-      style.textContent = `
-        .pdf-content {
-          font-family: Arial, sans-serif !important;
-          /* Add these new rules */
-          white-space: normal !important;
-          word-wrap: break-word !important;
-          overflow-wrap: break-word !important;
-        }
-        /* Force all elements to inherit styles */
-        .ql-editor, .ql-editor * {
-          all: revert !important;
-          font-family: inherit !important;
-          line-height: inherit !important;
-        }
-        /* Explicitly define text decoration */
-        u {
-          text-decoration: underline !important;
-        }
-        strike {
-          text-decoration: line-through !important;
-        }
-        
-        /* Size classes */
-        .ql-size-small { 
-          font-size: 0.75em !important; 
-        }
-        .ql-size-normal { 
-          font-size: 1em !important; 
-        }
-        .ql-size-large { 
-          font-size: 1.5em !important; 
-        }
-        .ql-size-huge { 
-          font-size: 2em !important; 
-        }
-      `;
-      document.head.appendChild(style);
-
-      try {
-        await html2pdf().set(opt).from(container).save();
-      } finally {
-        style.remove();
-      }
-    }, // Add comma here
-
     async confirmSubmit() {
       try {
         this.isSubmitting = true;
-        
-        // Format recipients data correctly
+        this.showConfirmModal = false;
+
         const formData = {
           ...this.letterForm,
-          recipients: this.letterForm.recipients.map(r => ({
-            id: r.id,
-            name: r.name,
-            position: r.position
-          })).filter(r => r.id), // Filter out empty recipients
-          title: this.letterForm.title,
-          type: this.letterForm.type,
-          subject: this.letterForm.subject,
-          date: this.letterForm.date,
-          content: this.letterForm.content,
-          sender_name: this.letterForm.sender_name,
-          sender_position: this.letterForm.sender_position
+          recipients: this.letterForm.recipients
+            .filter(r => r.id)
+            .map(r => r.id) // Send only recipient IDs
         };
-
-        console.log('Sending data:', formData);
 
         let response;
         if (this.editMode) {
-          response = await apiClient.put(`/letters/${this.letter.id}/`, formData);
+          response = await apiClient.put(`/letters/${this.letter.id}`, formData);
         } else {
-          response = await apiClient.post('/letters/', formData);
+          response = await apiClient.post('/letters', formData);
         }
 
-        // Remove the PDF generation line from here
-        // await this.generatePDF();
-
-        this.showConfirmModal = false;
         this.showSuccess = true;
-        this.$emit('refresh-letters');
+        this.$emit('refresh-letters'); // Emit event to refresh the letters list
 
         setTimeout(() => {
           this.showSuccess = false;
-          this.closeModal();
+          this.$emit('close');
         }, 1500);
-
+      
       } catch (error) {
         console.error('Error submitting letter:', error);
-        // Handle Django-style validation errors
-        if (error.response?.data?.errors) {
-          this.errors = error.response.data.errors;
-        } else if (error.response?.data) {
+        // Handle validation errors
+        if (error.response?.data) {
           this.errors = error.response.data;
-        } else {
-          alert('An error occurred while saving the letter. Please try again.');
         }
       } finally {
         this.isSubmitting = false;
       }
     },
+    validateForm() {
+      this.errors = {};
+      let isValid = true;
+
+      if (!this.letterForm.title?.trim()) {
+        this.errors.title = 'Title is required';
+        isValid = false;
+      }
+
+      if (!this.letterForm.type) {
+        this.errors.type = 'Type is required';
+        isValid = false;
+      }
+
+      if (!this.letterForm.recipients?.[0]?.id) {
+        this.errors.recipients = 'At least one recipient is required';
+        isValid = false;
+      }
+
+      return isValid;
+    },
+    handleSubmit() {
+      if (this.validateForm()) {
+        this.showConfirmModal = true;
+      }
+    }
   }
-}
 </script>
 
 <style>
