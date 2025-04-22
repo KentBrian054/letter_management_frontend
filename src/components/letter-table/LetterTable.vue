@@ -3,7 +3,7 @@
     <!-- Add New Letter button above SearchFilters -->
     <div class="flex justify-end mb-4">
       <button
-        @click="handleNewLetterClick"
+        @click="showModal = true"  
         class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 flex items-center gap-2"
       >
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -116,7 +116,7 @@
         <div class="flex items-center justify-center min-h-screen p-4">
           <div class="relative bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4">
             <LetterModal
-              v-model="showModal"
+              v-model="showModal"  
               :letter="selectedLetter"
               @close="closeModal"
               @save-letter="handleLetterSaved"
@@ -356,9 +356,10 @@ export default {
       this.currentLetter = null;
     },
 
+    // Remove or update this method:
     handleNewLetterClick() {
-      this.selectedLetter = null;
       this.showModal = true;
+      this.selectedLetter = null; // Clear any previous letter data
     },
     
     closeModal() {

@@ -119,36 +119,38 @@ export default {
         this.isConverting = false;
       }
     },
-    async handlePreviewPDF() {
+    async handlePreviewPDF(letterId) {
       try {
-        const baseUrl = import.meta.env.VITE_API_URL || 'http://192.168.5.71:8000';
-        const endpoint = `${baseUrl}/api/letters/preview-pdf/${this.letter.id}`;
+        this.isLoading = true;
         
-        console.log('Attempting to fetch PDF from:', endpoint);
-        this.isLoadingPDF = true;
+        // Add retry mechanism with timeout
+        const maxRetries = 3;
+        let retryCount = 0;
+        let response;
         
-        const response = await fetch(endpoint, {
-          headers: {
-            'Accept': 'application/pdf',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          },
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`Failed to load PDF: ${response.status} ${errorText}`);
+        while (retryCount < maxRetries) {
+          try {
+            response = await apiClient.get(`/letters/preview-pdf/${letterId}`, {
+              timeout: 10000, // 10 seconds timeout
+              responseType: 'blob'
+            });
+            break; // Success, exit retry loop
+          } catch (error) {
+            retryCount++;
+            if (retryCount === maxRetries) throw error;
+            await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds before retry
+          }
         }
-        
-        const blob = await response.blob();
+
+        const blob = new Blob([response.data], { type: 'application/pdf' });
         const url = window.URL.createObjectURL(blob);
         window.open(url, '_blank');
-        window.URL.revokeObjectURL(url);
+        
       } catch (error) {
         console.error('PDF preview error:', error);
-        this.showErrorMessage = true;
-        this.errorMessage = error.message;
+        this.$toast.error('Failed to load PDF preview. Please try again later.');
       } finally {
-        this.isLoadingPDF = false;
+        this.isLoading = false;
       }
     },
     handleEdit() {

@@ -241,6 +241,7 @@ import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import axios from 'axios'
 import SuccessMessageModal from './modals/SuccessMessageModal.vue'
+import { editorOptions } from './editorOptions';
 
 export default {
   name: 'LetterEditModal',
@@ -272,6 +273,7 @@ export default {
       showSuccess: false,
       isSubmitting: false,
       errors: [], // Initialize errors array
+      editorOptions: editorOptions, // Add this line
       formData: {
         title: '',
         type: '',

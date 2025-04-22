@@ -1,26 +1,14 @@
 <template>
-  <div v-if="modelValue" class="fixed inset-0 z-50 overflow-hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-    <div class="fixed inset-0 bg-gray-500/75 backdrop-blur-sm transition-opacity"></div>
-    <div class="flex items-center justify-center min-h-screen p-4">
-      <div class="relative bg-white rounded-xl shadow-2xl w-[90%] h-[90vh] max-w-[1300px] overflow-hidden">
-        <LetterHeader
-          :editMode="editMode"
-          :letterForm="letterForm"
-          :errors="errors"
-          @back="handleBack"
-          @submit="handleSubmit"
-        />
-        
-        <!-- Rest of the template content -->
-      </div>
+  <transition name="fade">
+    <div v-if="modelValue" class="fixed inset-0 z-50 overflow-hidden">
+      <!-- Modal content -->
     </div>
-  </div>
+  </transition>
 </template>
 
 <script>
 import LetterHeader from './LetterHeader.vue';
-import { apiClient } from './apiClient';  // Already imported from apiClient.js
-import { editorOptions } from './editorOptions';
+import { apiClient } from './apiClient';
 import { QuillEditor } from '@vueup/vue-quill';
 import '@vueup/vue-quill/dist/vue-quill.snow.css';
 import { nextTick } from 'vue';
@@ -42,7 +30,8 @@ export default {
   name: 'LetterForm',
   components: {
     QuillEditor,
-    SuccessMessageModal
+    SuccessMessageModal,
+    LetterHeader  // Add this line to register the component
   },
   props: {
     modelValue: {
@@ -61,6 +50,27 @@ export default {
   emits: ['update:modelValue', 'close', 'save', 'save-letter', 'update-letter', 'refresh-letters'],
   data() {
     return {
+      editorOptions: {
+        modules: {
+          toolbar: [
+            ['bold', 'italic', 'underline', 'strike'],
+            ['blockquote', 'code-block'],
+            [{ 'header': 1 }, { 'header': 2 }],
+            [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+            [{ 'script': 'sub' }, { 'script': 'super' }],
+            [{ 'indent': '-1' }, { 'indent': '+1' }],
+            [{ 'direction': 'rtl' }],
+            [{ 'size': ['small', false, 'large', 'huge'] }],
+            [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+            [{ 'color': [] }, { 'background': [] }],
+            [{ 'font': [] }],
+            [{ 'align': [] }],
+            ['clean']
+          ]
+        },
+        placeholder: 'Compose your letter...',
+        theme: 'snow'
+      },
       letterForm: {
         title: '',
         type: '',
@@ -91,42 +101,58 @@ export default {
       );
     }
   },
-  created() {
-    if (this.letter && Object.keys(this.letter).length > 0) {
-      this.editMode = true;
-      const formattedRecipients = Array.isArray(this.letter.recipients) 
-        ? this.letter.recipients.map(r => {
-            // Handle both object and ID formats
-            if (typeof r === 'object') {
-              return {
-                id: r.id || '',
-                name: r.name || '',
-                position: r.position || ''
-              };
-            } else {
-              // If it's just an ID, we'll populate name/position after fetching recipients
-              return {
-                id: r,
-                name: '',
-                position: ''
-              };
-            }
-          })
-        : [{
-            id: this.letter.recipients?.id || this.letter.recipients || '',
-            name: this.letter.recipients?.name || '',
-            position: this.letter.recipients?.position || ''
-          }];
+  async created() {
+    try {
+      await this.fetchCSRFToken();
       
-      this.letterForm = {
-        ...this.letter,
-        date: this.formatDateForInput(this.letter.date),
-        recipients: formattedRecipients
-      };
+      if (this.letter && Object.keys(this.letter).length > 0) {
+        this.editMode = true;
+        const formattedRecipients = Array.isArray(this.letter.recipients) 
+          ? this.letter.recipients.map(r => {
+              // Handle both object and ID formats
+              if (typeof r === 'object') {
+                return {
+                  id: r.id || '',
+                  name: r.name || '',
+                  position: r.position || ''
+                };
+              } else {
+                // If it's just an ID, we'll populate name/position after fetching recipients
+                return {
+                  id: r,
+                  name: '',
+                  position: ''
+                };
+              }
+            })
+          : [{
+              id: this.letter.recipients?.id || this.letter.recipients || '',
+              name: this.letter.recipients?.name || '',
+              position: this.letter.recipients?.position || ''
+            }];
+        
+        this.letterForm = {
+          ...this.letter,
+          date: this.formatDateForInput(this.letter.date),
+          recipients: formattedRecipients
+        };
+      }
+      this.fetchRecipients();
+    } catch (error) {
+      console.error('Component initialization error:', error);
+      this.closeModal();
     }
-    this.fetchRecipients();
-  },
+  },  // <-- Add this comma
   methods: {
+    async fetchCSRFToken() {
+      try {
+        await apiClient.get('/sanctum/csrf-cookie');
+      } catch (error) {
+        console.error('Error fetching CSRF token:', error);
+        throw error;
+      }
+    },
+
     formatDateForInput(dateString) {
       if (!dateString) return '';
       const date = new Date(dateString);
@@ -161,19 +187,26 @@ export default {
       }
     },
     updateRecipient(index, recipientId) {
-      // Add null check and data validation
-      if (!recipientId) return;
+      if (!recipientId) {
+        this.letterForm.recipients[index] = { id: '', name: '', position: '' };
+        return;
+      }
       
       const selectedRecipient = this.recipientsList.find(r => 
         r.id === parseInt(recipientId)
       );
       
       if (selectedRecipient) {
-        this.letterForm.recipients[index] = {
-          id: selectedRecipient.id,
-          name: selectedRecipient.name,
-          position: selectedRecipient.position
-        };
+        // Replace this.$set with direct assignment and array copy
+        this.letterForm.recipients = [
+          ...this.letterForm.recipients.slice(0, index),
+          {
+            id: selectedRecipient.id,
+            name: selectedRecipient.name,
+            position: selectedRecipient.position
+          },
+          ...this.letterForm.recipients.slice(index + 1)
+        ];
       }
     },  // Add comma here
     handleBack() {
@@ -191,25 +224,149 @@ export default {
       };
       this.closeModal();
     },
+    validateForm() {
+      this.errors = {};
+      let isValid = true;
+
+      // Validate title
+      if (!this.letterForm.title?.trim()) {
+        this.errors.title = 'Title is required';
+        isValid = false;
+      }
+
+      // Validate type
+      if (!this.letterForm.type?.trim()) {
+        this.errors.type = 'Type is required';
+        isValid = false;
+      }
+
+      // Validate subject
+      if (!this.letterForm.subject?.trim()) {
+        this.errors.subject = 'Subject is required';
+        isValid = false;
+      }
+
+      // Validate date
+      if (!this.letterForm.date) {
+        this.errors.date = 'Date is required';
+        isValid = false;
+      }
+
+      // Validate content
+      if (!this.letterForm.content?.trim()) {
+        this.errors.content = 'Content is required';
+        isValid = false;
+      }
+
+      // Validate sender info
+      if (!this.letterForm.sender_name?.trim()) {
+        this.errors.sender_name = 'Sender name is required';
+        isValid = false;
+      }
+
+      if (!this.letterForm.sender_position?.trim()) {
+        this.errors.sender_position = 'Sender position is required';
+        isValid = false;
+      }
+
+      // Validate recipients
+      const hasEmptyRecipients = this.letterForm.recipients.some(r => !r.id);
+      if (hasEmptyRecipients) {
+        this.errors.recipients = 'All recipients must be selected';
+        isValid = false;
+      }
+
+      return isValid;
+    },
+
+    async confirmSubmit() {
+      try {
+        this.isSubmitting = true;
+        
+        // Prepare the data with full recipient objects
+        const formData = {
+          title: this.letterForm.title,
+          type: this.letterForm.type,
+          subject: this.letterForm.subject,
+          date: this.letterForm.date,
+          content: this.letterForm.content,
+          sender_name: this.letterForm.sender_name,
+          sender_position: this.letterForm.sender_position,
+          recipients: this.letterForm.recipients
+            .filter(r => r.id) // Only include recipients with IDs
+            .map(r => ({
+              id: r.id,
+              name: r.name, // Include name
+              position: r.position // Include position
+            }))
+        };
+    
+        // Debug log
+        console.log('Submitting:', formData);
+    
+        let response;
+        if (this.editMode) {
+          response = await apiClient.put(`/letters/${this.letter.id}`, formData);
+        } else {
+          response = await apiClient.post('/letters', formData);
+        }
+    
+        console.log('Response:', response.data);
+        this.$emit('refresh-letters');
+        this.showSuccess = true;
+        
+      } catch (error) {
+        console.error('Error submitting letter:', error);
+        this.errors = error.response?.data?.errors || {};
+        this.errors.submit = error.response?.data?.message || 'Failed to save letter';
+      } finally {
+        this.isSubmitting = false;
+      }
+    },  // <-- Add this comma
+    
     handleSubmit() {
-      if (this.validateForm()) {
-        this.showConfirmModal = true;
-      } else {
-        // Scroll to first error if validation fails
-        this.$nextTick(() => {
-          const firstError = Object.keys(this.errors)[0];
-          if (firstError) {
-            const element = this.$el.querySelector(`[name="${firstError}"]`) || 
-                           this.$el.querySelector(`.border-red-500`);
-            if (element) {
-              element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-          }
-        });
+      if (!this.validateForm()) {
+        return;
+      }
+      this.confirmSubmit();
+    },
+
+    async handleQuickSave() {
+      if (!this.validateForm()) {
+        return;
+      }
+      
+      try {
+        this.isSubmitting = true;
+        const formData = {
+          title: this.letterForm.title,
+          type: this.letterForm.type,
+          subject: this.letterForm.subject,
+          date: this.letterForm.date,
+          content: this.letterForm.content,
+          sender_name: this.letterForm.sender_name,
+          sender_position: this.letterForm.sender_position,
+          recipients: this.letterForm.recipients
+            .filter(r => r.id)
+            .map(r => ({
+              id: r.id,
+              name: r.name,
+              position: r.position
+            }))
+        };
+
+        const response = await apiClient.post('/letters', formData);
+        this.$emit('refresh-letters');
+        this.showSuccess = true;
+      } catch (error) {
+        console.error('Quick save error:', error);
+        this.errors.submit = error.response?.data?.message || 'Quick save failed';
+      } finally {
+        this.isSubmitting = false;
       }
     }
-  },  // This properly closes the methods object
-}  // This closes the export default object
+  }
+}
 </script>
 
 <style>
@@ -245,6 +402,16 @@ export default {
   white-space: pre-wrap;
 }
 </style>
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
 
 
 

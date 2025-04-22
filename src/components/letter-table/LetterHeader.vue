@@ -29,9 +29,21 @@
           Back
         </button>
         <button
+          type="button"
+          @click="handleQuickSave"
+          :disabled="isSubmitting"
+          class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center gap-2 transition-all disabled:opacity-50"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          </svg>
+          Quick Save
+        </button>
+        <button
           type="submit"
           @click="handleSubmit"
-          class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 flex items-center gap-2 transition-all"
+          :disabled="isSubmitting"
+          class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 flex items-center gap-2 transition-all disabled:opacity-50"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
@@ -48,7 +60,8 @@ export default {
   props: {
     editMode: Boolean,
     letterForm: Object,
-    errors: Object
+    errors: Object,
+    isSubmitting: Boolean
   },
   methods: {
     handleBack() {
@@ -56,6 +69,23 @@ export default {
     },
     handleSubmit() {
       this.$emit('submit');
+    },
+    handleQuickSave() {
+      this.$emit('quick-save');
+    },
+    validateAndSave() {
+      // Basic validation before saving
+      if (!this.letterForm.title?.trim()) {
+        this.$emit('validation-error', 'Title is required');
+        return;
+      }
+      if (!this.letterForm.content?.trim()) {
+        this.$emit('validation-error', 'Content is required');
+        return;
+      }
+      
+      // Emit save event if validation passes
+      this.$emit('quick-save');
     }
   }
 };
