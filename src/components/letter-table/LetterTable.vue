@@ -116,7 +116,7 @@
         <div class="flex items-center justify-center min-h-screen p-4">
           <div class="relative bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4">
             <LetterModal
-              :key="selectedLetter?.id || 'new'"
+              v-model="showModal"
               :letter="selectedLetter"
               @close="closeModal"
               @save-letter="handleLetterSaved"

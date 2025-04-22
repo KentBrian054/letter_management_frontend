@@ -116,7 +116,7 @@ export default {
   methods: {
     handleSubmit: debounce(async function() {
       try {
-        const response = await axios.post('http://192.168.5.95:8000/api/recipients', this.recipientForm, {
+        const response = await axios.post('http://192.168.100.11:8000/api/recipients', this.recipientForm, {
           headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json'
