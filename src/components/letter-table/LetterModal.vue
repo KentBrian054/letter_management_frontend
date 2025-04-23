@@ -1,5 +1,4 @@
-@ -1,603 +0,0 @@
-@ -1,418 +0,0 @@
+
 <template>
   <transition name="fade">
     <div v-if="modelValue" class="fixed inset-0 z-50 overflow-hidden">
@@ -155,9 +154,7 @@
 
 <script>
 import LetterHeader from './LetterHeader.vue';
-// Change this line:
-import apiClient from '@/utils/apiClient'; // Using default import instead of named import
-
+import apiClient from '../../utils/apiClient'  // Changed from '../../../utils/apiClient'
 import { QuillEditor } from '@vueup/vue-quill';
 import '@vueup/vue-quill/dist/vue-quill.snow.css';
 import SuccessMessageModal from './modals/SuccessMessageModal.vue';
@@ -601,4 +598,11 @@ export default {
   opacity: 0;
 }
 </style>
+
+// In template:
+<LetterHeader 
+  title="Edit Letter" 
+  :show-back-button="true"
+  @back="handleBack"
+/>
 

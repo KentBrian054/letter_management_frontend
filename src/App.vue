@@ -7,7 +7,7 @@
             <router-link 
               to="/letters" 
               class="px-4 py-3 text-base font-semibold rounded-md transition-all duration-200 border-b-2"
-              :class="{ 
+              :class="{
                 'text-blue-700 border-blue-700': $route.path === '/letters',
                 'text-gray-600 hover:text-blue-700 border-transparent': $route.path !== '/letters'
               }"

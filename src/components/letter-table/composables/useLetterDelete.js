@@ -1,4 +1,4 @@
-import apiClient from '@/utils/apiClient';
+import apiClient from '../../../utils/apiClient'  // Changed from '@/utils/apiClient'
 
 export default function useLetterDelete() {
   const deleteLetter = async (id) => {

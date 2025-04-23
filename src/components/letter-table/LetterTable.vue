@@ -200,7 +200,7 @@
 </style>
 
 <script>
-import apiClient from '@/utils/apiClient';
+import apiClient from '../../utils/apiClient'
 import LetterModal from './LetterModal.vue';
 import LetterActions from './LetterActions.vue';
 // Update the import statement

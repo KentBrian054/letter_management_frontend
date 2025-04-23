@@ -110,7 +110,7 @@ import RecipientActions from './RecipientActions.vue'
 import RecipientForm from './RecipientForm.vue'
 import axios from 'axios'
 import { PlusIcon } from '@heroicons/vue/24/outline'
-import apiClient from '@/utils/apiClient'
+import apiClient from '../../utils/apiClient'
 
 const recipients = ref([])
 const showAddModal = ref(false)

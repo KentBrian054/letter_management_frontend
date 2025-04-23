@@ -97,7 +97,7 @@
 <script setup>
 import { ref, watch, computed } from 'vue'  // Add computed import
 import debounce from 'lodash/debounce'
-import apiClient from '@/utils/apiClient'
+import apiClient from '../../utils/apiClient'
 
 const props = defineProps({
   recipient: {

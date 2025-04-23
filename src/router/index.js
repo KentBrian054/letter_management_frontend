@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import LetterTable from '@/components/letter-table/LetterTable.vue'
-import RecipientTable from '@/components/recipient-table/RecipientTable.vue'
+import LetterTable from '../components/letter-table/LetterTable.vue'
+import RecipientTable from '../components/recipient-table/RecipientTable.vue'
 
 const routes = [
   {
