@@ -1,4 +1,4 @@
-@ -1,418 +0,0 @@
+
 <template>
   <transition name="fade">
     <div v-if="modelValue" class="fixed inset-0 z-50 overflow-hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
@@ -12,7 +12,7 @@
               
               <!-- Title input centered with white background -->
               <div class="flex-1 flex justify-center mx-6">
-                <div class="flex flex-col w-[600px] bg-white rounded-lg shadow-sm">
+                <div class="flex flex-col w-[350px] bg-white rounded-lg shadow-sm">
                   <input
                     v-model="letterForm.title"
                     :class="{'border-red-500': errors.title}"
@@ -20,7 +20,9 @@
                     required
                     placeholder="Enter letter title"
                     class="w-full px-4 py-2.5 text-lg font-medium rounded-lg outline-none bg-transparent"
+                    @input="clearError('title')"
                   />
+                  <ValidationWarning v-if="errors.title" :message="errors.title" />
                 </div>
               </div>
               
@@ -53,8 +55,9 @@
                   :disabled="isSubmitting"
                   class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center gap-2 transition-all disabled:opacity-50"
                 >
+                  <!-- Changed icon to bookmark -->
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5v14l7-7 7 7V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2z"/>
                   </svg>
                   Save as Template
                 </button>
@@ -67,25 +70,46 @@
             <div class="bg-white rounded-xl shadow-sm p-8">
               <form @submit.prevent="handleSubmit" class="space-y-8">
                 <!-- Letter Type -->
-                <div class="flex items-center gap-4">
-                  <label class="font-medium w-24 text-lg">Type:</label>
-                  <div class="flex flex-col">
-                    <div class="relative">
-                      <select
-                        v-model="letterForm.type"
-                        required
-                        class="w-[200px] border rounded-md px-4 py-2 text-base bg-white appearance-none pr-10"
-                      >
-                        <option value="Memo">Memo</option>
-                        <option value="Business Letter">Business Letter</option>
-                      </select>
-                      <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                        </svg>
+                <!-- Letter Type and Template in a row -->
+                <div class="flex items-center gap-8">
+                  <!-- Type Field -->
+                  <div class="flex items-center gap-4">
+                    <label class="font-medium w-24 text-lg">Type:</label>
+                    <div class="flex flex-col">
+                      <div class="relative">
+                        <select
+                          v-model="letterForm.type"
+                          required
+                          class="w-[200px] border rounded-md px-4 py-2 text-base bg-white appearance-none pr-10"
+                          @change="clearError('type')"
+                        >
+                          <option value="Memo">Memo</option>
+                          <option value="Business Letter">Business Letter</option>
+                        </select>
+                        <ValidationWarning v-if="errors.type" :message="errors.type" />
+                        <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                          <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
                       </div>
                     </div>
+                    <!-- Template Field (right next to Type) -->
+                    <div class="flex items-center gap-4 ml-8">
+                      <label class="font-medium w-24 text-lg">Template:</label>
+                      <select
+                        v-model="selectedTemplate"
+                        class="w-[200px] border rounded-md px-4 py-2 text-base bg-white appearance-none pr-10"
+                        @change="clearError('template')"
+                      >
+                        <option value="">Select Template</option>
+                        <option v-for="template in templates" :key="template.id" :value="template.id">
+                          {{ template.name }}
+                        </option>
+                      </select>
+                    </div>
                   </div>
+                  <!-- End Letter Type and Template row -->
                 </div>
 
                 <!-- Recipients Section -->
@@ -106,7 +130,6 @@
 
                   <div v-for="(recipient, index) in letterForm.recipients" :key="index" class="flex items-center gap-4 ml-24">
                     <div class="flex-1">
-                      <!-- Update the recipient select element -->
                       <select
                         v-model="recipient.id"
                         @change="updateRecipient(index, $event.target.value)"
@@ -118,7 +141,6 @@
                           {{ r.name }} - {{ r.position }}
                         </option>
                       </select>
-                      <!-- Display selected recipient info -->
                       <div v-if="recipient.name && recipient.position" class="mt-1 text-sm text-gray-600">
                         Selected: {{ recipient.name }} - {{ recipient.position }}
                       </div>
@@ -134,6 +156,7 @@
                       </svg>
                     </button>
                   </div>
+                  <ValidationWarning v-if="errors.recipients" :message="errors.recipients" />
                 </div>
 
                 <!-- Subject field -->
@@ -146,7 +169,9 @@
                       required
                       class="border rounded-md px-4 py-2"
                       :class="{ 'border-red-500': errors.subject }"
+                      @input="clearError('subject')"
                     />
+                    <ValidationWarning v-if="errors.subject" :message="errors.subject" />
                   </div>
                 </div>
 
@@ -160,7 +185,9 @@
                       required
                       class="w-[200px] border rounded-md px-4 py-2"
                       :class="{ 'border-red-500': errors.date }"
+                      @input="clearError('date')"
                     />
+                    <ValidationWarning v-if="errors.date" :message="errors.date" />
                   </div>
                 </div>
 
@@ -168,13 +195,19 @@
                 <div class="flex items-start gap-4 mt-6">
                   <label class="font-medium w-24 text-lg pt-2">Content:</label>
                   <div class="flex-1">
-                    <QuillEditor
-                      v-model:content="letterForm.content"
-                      contentType="html"
-                      :options="editorOptions"
-                      class="h-[300px]"
-                      :class="{ 'border-red-500': errors.content }"
-                    />
+                    <div class="relative">
+                      <QuillEditor
+                        v-model:content="letterForm.content"
+                        contentType="html"
+                        :options="editorOptions"
+                        class="h-[350px] min-h-[200px] border border-gray-300 rounded-lg bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200 transition-all"
+                        :class="{ 'border-red-500': errors.content }"
+                        @update:content="onContentInput"
+                      />
+                      <ValidationWarning v-if="errors.content" :message="errors.content" />
+                      <div class="absolute inset-0 pointer-events-none rounded-lg ring-1 ring-inset ring-gray-200"></div>
+                    </div>
+                    <ValidationWarning v-if="errors.content" :message="errors.content" />
                   </div>
                 </div>
 
@@ -190,7 +223,9 @@
                         placeholder="Enter sender's name"
                         class="w-full border rounded-md px-4 py-2"
                         :class="{ 'border-red-500': errors.sender_name }"
+                        @input="clearError('sender_name')"
                       />
+                      <ValidationWarning v-if="errors.sender_name" :message="errors.sender_name" />
                     </div>
                     <div class="flex flex-col space-y-2">
                       <label class="text-base font-medium">Position/Title</label>
@@ -200,7 +235,9 @@
                         placeholder="Enter sender's position"
                         class="w-full border rounded-md px-4 py-2"
                         :class="{ 'border-red-500': errors.sender_position }"
+                        @input="clearError('sender_position')"
                       />
+                      <ValidationWarning v-if="errors.sender_position" :message="errors.sender_position" />
                     </div>
                   </div>
                 </div>
@@ -262,18 +299,21 @@
 <script>
 import LetterHeader from './LetterHeader.vue';
 // Change this line:
-import apiClient from '@/utils/apiClient'; // Using default import instead of named import
+import apiClient from '@/utils/apiClient'; // Using default import of named import
 
 import { QuillEditor } from '@vueup/vue-quill';
 import '@vueup/vue-quill/dist/vue-quill.snow.css';
 import SuccessMessageModal from './modals/SuccessMessageModal.vue';
+// Add this import:
+import ValidationWarning from '@/components/common/ValidationWarning.vue';
 
 export default {
   name: 'LetterModal',
   components: {
     QuillEditor,
     SuccessMessageModal,
-    LetterHeader
+    LetterHeader,
+    ValidationWarning // Register the component
   },
   props: {
     modelValue: {
@@ -527,6 +567,7 @@ export default {
           ...this.letterForm.recipients.slice(index + 1)
         ];
       }
+      this.clearError('recipients');
     },  // Add comma here
     handleBack() {
       // Reset form and close modal
@@ -684,6 +725,12 @@ export default {
       } finally {
         this.isSubmitting = false;
       }
+    },  // <-- Add this comma
+
+    clearError(field) {
+      if (this.errors && this.errors[field]) {
+        delete this.errors[field] // Changed from this.$delete to standard delete
+      }
     }
   }
 }
@@ -721,7 +768,6 @@ export default {
 .ql-snow .ql-editor pre {
   white-space: pre-wrap;
 }
-</style>
 
 .fade-enter-active,
 .fade-leave-active {
@@ -732,3 +778,4 @@ export default {
 .fade-leave-to {
   opacity: 0;
 }
+</style>

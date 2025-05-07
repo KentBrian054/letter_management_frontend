@@ -10,15 +10,16 @@
             
             <!-- Title input centered with white background -->
             <div class="flex-1 flex justify-center mx-6">
-              <div class="flex flex-col w-[600px] bg-white rounded-lg shadow-sm">
+              <div class="flex flex-col w-[350px] bg-white rounded-lg shadow-sm">
                 <input
                   v-model="formData.title"
-                  :class="{'border-red-500': errors && errors.includes('title')}"
+                  :class="{'border-red-500': errors && errors.title}"
                   type="text"
                   required
                   placeholder="Enter letter title"
                   class="w-full px-4 py-2.5 text-lg font-medium rounded-lg outline-none bg-transparent"
                 />
+                <ValidationWarning v-if="errors && errors.title" :message="errors.title" />
               </div>
             </div>
             
@@ -44,6 +45,17 @@
                 </svg>
                 Update
               </button>
+              <button
+                type="button"
+                @click="handleQuickSave"
+                class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center gap-2 transition-all"
+              >
+                <!-- Changed icon to bookmark -->
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5v14l7-7 7 7V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2z"/>
+                </svg>
+                Save as Template
+              </button>
             </div>
           </div>
         </div>
@@ -53,80 +65,45 @@
           <div class="bg-white rounded-xl shadow-sm p-8">
             <form @submit.prevent="handleSubmit" class="space-y-8">
               <!-- Rest of your form fields remain the same but with updated styling -->
-              <!-- Letter Type -->
-              <div class="flex items-center gap-4">
-                <label class="font-medium w-24 text-lg">Type:</label>
-                <div class="flex flex-col">
-                  <div class="relative">
-                    <select
-                      v-model="formData.type"
-                      required
-                      class="w-[200px] border rounded-md px-4 py-2 text-base bg-white appearance-none pr-10"
-                    >
-                      <option value="Memo">Memo</option>
-                      <option value="Business Letter">Business Letter</option>
-                    </select>
-                    <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                      <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Recipients Section -->
-              <div class="space-y-4">
+              <!-- Letter Type and Template in a row -->
+              <div class="flex items-center gap-8">
+                <!-- Type Field -->
                 <div class="flex items-center gap-4">
-                  <label class="font-medium w-24 text-lg">FOR:</label>
-                  <button
-                    type="button"
-                    @click="addRecipient"
-                    class="border rounded-md px-4 py-2 bg-gray-50 hover:bg-gray-100 text-base flex items-center gap-2"
-                  >
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                    </svg>
-                    Add Recipient
-                  </button>
-                </div>
-
-                <!-- Recipients Section -->
-                <div v-for="(recipient, index) in formData.recipients" :key="index" class="flex items-center gap-4 ml-24">
-                  <div class="flex-1">
-                    <select
-                      v-model="recipient.id"
-                      class="w-[500px] border rounded-md px-4 py-2 appearance-none bg-white pr-10"
-                      @change="updateRecipient(index, $event.target.value)"
-                    >
-                      <option value="">Select Recipient</option>
-                      <option 
-                        v-for="r in availableRecipients" 
-                        :key="r.id" 
-                        :value="r.id"
+                  <label class="font-medium w-24 text-lg">Type:</label>
+                  <div class="flex flex-col">
+                    <div class="relative">
+                      <select
+                        v-model="formData.type"
+                        required
+                        class="w-[200px] border rounded-md px-4 py-2 text-base bg-white appearance-none pr-10"
                       >
-                        {{ r.name }} - {{ r.position }}
-                      </option>
-                    </select>
-                    <!-- Display selected recipient info -->
-                    <div v-if="recipient.name && recipient.position" class="mt-1 text-sm text-gray-600">
-                      Selected: {{ recipient.name }} - {{ recipient.position }}
+                        <option value="Memo">Memo</option>
+                        <option value="Business Letter">Business Letter</option>
+                      </select>
+                      <ValidationWarning v-if="errors && errors.type" :message="errors.type" />
+                      <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
                     </div>
                   </div>
-                  <button
-                    v-if="formData.recipients.length > 1"
-                    @click="removeRecipient(index)"
-                    type="button"
-                    class="text-red-600 hover:text-red-800"
+                </div>
+                <!-- Template Field (right next to Type) -->
+                <div class="flex items-center gap-4 ml-8">
+                  <label class="font-medium w-24 text-lg">Template:</label>
+                  <select
+                    v-model="selectedTemplate"
+                    class="w-[200px] border rounded-md px-4 py-2 text-base bg-white appearance-none pr-10"
                   >
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
+                    <option value="">Select Template</option>
+                    <option v-for="template in templates" :key="template.id" :value="template.id">
+                      {{ template.name }}
+                    </option>
+                  </select>
                 </div>
               </div>
-
-              <!-- Subject field -->
+              <!-- End Letter Type and Template row -->
               <div class="flex items-center gap-4">
                 <label class="font-medium w-24 text-lg">Subject:</label>
                 <div class="flex flex-col flex-1">
@@ -194,6 +171,7 @@
                       placeholder="Enter sender's name"
                       class="w-full border rounded-md px-4 py-2"
                     />
+                    <ValidationWarning v-if="errors && errors.sender_name" :message="errors.sender_name" />
                   </div>
                   <div class="flex flex-col space-y-2">
                     <label class="text-base font-medium">Position/Title</label>
@@ -203,6 +181,7 @@
                       placeholder="Enter sender's position"
                       class="w-full border rounded-md px-4 py-2"
                     />
+                    <ValidationWarning v-if="errors && errors.sender_position" :message="errors.sender_position" />
                   </div>
                 </div>
               </div>
@@ -258,12 +237,15 @@ import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import axios from 'axios'
 import SuccessMessageModal from './modals/SuccessMessageModal.vue'
 import { editorOptions } from './editorOptions';
+// Import ValidationWarning component
+import ValidationWarning from '@/components/common/ValidationWarning.vue';
 
 export default {
   name: 'LetterEditModal',
   components: {
     QuillEditor,
-    SuccessMessageModal
+    SuccessMessageModal,
+    ValidationWarning // Register the component
   },
   props: {
     modelValue: {
