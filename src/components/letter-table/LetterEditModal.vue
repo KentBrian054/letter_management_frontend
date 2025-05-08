@@ -1,6 +1,10 @@
 <template>
-  <div v-if="modelValue" class="fixed inset-0 z-50 overflow-hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+  <div v-if="modelValue" class="fixed inset-0 z-50 overflow-hidden">
+    <!-- Fix for line 122 -->
     <div class="fixed inset-0 bg-gray-500/75 backdrop-blur-sm transition-opacity"></div>
+    
+    <!-- Fix for line 418 -->
+    </div> <!-- Proper closing tag -->
     <div class="flex items-center justify-center min-h-screen p-4">
       <div class="relative bg-white rounded-xl shadow-2xl w-[90%] h-[90vh] max-w-[1300px] overflow-hidden">
         <!-- Header with gradient -->
@@ -9,9 +13,9 @@
             <h2 class="text-2xl font-bold text-white">Edit Letter</h2>
             
             <!-- Title input centered with white background -->
+            // In template section - Fix missing closing div and merge conflicts
             <div class="flex-1 flex justify-center mx-6">
               <div class="flex flex-col w-[350px] bg-white rounded-lg shadow-sm">
-                <!-- Change all v-model bindings from letter to formData -->
                 <input
                   v-model="letter.title"
                   :class="{'border-red-500': errors && errors.title}"
@@ -24,27 +28,105 @@
               </div>
             </div>
             
-            <!-- Action buttons with updated styling -->
+            // In script section - Fix syntax and merge conflicts
+            import ConfirmationModal from './modals/ConfirmationModal.vue';
+            import apiClient from '@/utils/apiClient';
+            import { QuillEditor } from '@vueup/vue-quill';
+            import '@vueup/vue-quill/dist/vue-quill.snow.css';
+            import SuccessMessageModal from './modals/SuccessMessageModal.vue';
+            import ValidationWarning from '@/components/common/ValidationWarning.vue';
+            
+            export default {
+              name: 'LetterEditModal',
+              components: {
+                QuillEditor,
+                SuccessMessageModal,
+                ConfirmationModal,
+                ValidationWarning
+              },
+              props: {
+                modelValue: {
+                  type: Boolean,
+                  default: false
+                },
+                letter: {
+                  type: Object,
+                  required: true
+                },
+                recipients: {
+                  type: Array,
+                  default: () => []
+                }
+              },
+              data() {
+                return {
+                  showConfirmModal: false,
+                  isSubmitting: false,
+                  isTemplateLoading: false,
+                  showTemplateModal: false,
+                  templateName: '',
+                  templates: [],
+                  selectedTemplate: '',
+                  errors: [],
+                  editorOptions: {
+                    modules: {
+                      toolbar: [
+                        ['bold', 'italic', 'underline', 'strike'],
+                        [{ 'color': [] }, { 'background': [] }],
+                        [{ 'font': [] }],
+                        [{ 'align': [] }],
+                        [{ 'size': ['small', false, 'large', 'huge'] }],
+                        [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+                        ['blockquote', 'code-block'],
+                        [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                        ['link', 'image'],
+                        ['clean']
+                      ]
+                    },
+                    theme: 'snow'
+                  },
+                  recipientsList: []
+                };
+              },
+              // ... rest of the component definition
+            }
+            
+            // In QuillEditor configuration - Fix missing comma
+            modules: {
+              toolbar: [
+                ['bold', 'italic', 'underline', 'strike'],
+                [{ 'color': [] }, { 'background': [] }],
+                [{ 'font': [] }],
+                [{ 'align': [] }],
+                [{ 'size': ['small', false, 'large', 'huge'] }],
+                [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+                ['blockquote', 'code-block'],
+                [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                ['link', 'image'],
+                ['clean']
+              ]
+            },
+
+            <!-- Action buttons -->
             <div class="flex items-center gap-4">
               <button
-                type="button"
                 @click="handleBack"
-                class="px-4 py-2 bg-white/20 text-white rounded-lg hover:bg-white/30 flex items-center gap-2 transition-all"
+                class="px-4 py-2 text-white hover:bg-white/10 rounded-lg"
               >
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                </svg>
                 Back
               </button>
               <button
-                type="submit"
-                @click="handleSubmit"
-                class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 flex items-center gap-2 transition-all"
+                @click="handleSaveTemplate"
+                class="px-4 py-2 text-white hover:bg-white/10 rounded-lg"
               >
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                </svg>
-                Update
+                Save as Template
+              </button>
+              <button
+                @click="handleSubmit"
+                class="px-6 py-2 bg-white text-blue-600 rounded-lg font-medium hover:bg-blue-50"
+                :disabled="isSubmitting"
+              >
+                {{ isSubmitting ? 'Updating...' : 'Update Letter' }}
               </button>
               <button
                 type="button"
@@ -61,9 +143,10 @@
           </div>
         </div>
 
-        <!-- Content with updated styling -->
+        <!-- Main content -->
         <div class="h-full overflow-y-auto pt-20 px-8 pb-8 bg-gray-50">
           <div class="bg-white rounded-xl shadow-sm p-8">
+
             <form @submit.prevent="handleSubmit" class="space-y-8">
               <!-- Rest of your form fields remain the same but with updated styling -->
               <!-- Letter Type and Template in a row -->
@@ -246,6 +329,30 @@
                   </div>
                 </div>
               </div>
+=======
+            <form class="space-y-8" @submit.prevent="handleSubmit">
+              <!-- Rest of the form fields remain the same as LetterModal.vue, but using letter instead of formData -->
+              <!-- For example: -->
+              <div class="flex items-center gap-4">
+                <label class="font-medium w-24 text-lg">Type:</label>
+                <select
+                  v-model="localLetter.type"
+                  required
+                  class="flex-1 border rounded-md px-4 py-2"
+                  :class="{ 'border-2 border-red-400': errors?.type }"
+                >
+                  <option value="">Select type</option>
+                  <option value="internal">Internal</option>
+                  <option value="external">External</option>
+                </select>
+                <div v-if="errors?.type" class="text-red-500 text-sm">
+                  {{ errors.type[0] }}
+                </div>
+              </div>
+
+              <!-- Continue with other form fields following the same pattern -->
+              // ... rest of the form fields ...
+>>>>>>> 2nd-backup
             </form>
           </div>
         </div>
@@ -322,21 +429,43 @@
       </div>
     </div>
   </div> <!-- This closes your root v-if="modelValue" div -->
+=======
+
+    <!-- Modals -->
+    <ConfirmationModal
+      :show="showConfirmModal"
+      @confirm="confirmSubmit"
+      @cancel="showConfirmModal = false"
+    />
+    <SuccessMessageModal
+      v-if="showSuccess"
+      :message="successMessage"
+      @close="handleSuccessClose"
+    />
+  </div>
+
 </template>
 
 <script>
+// Import statements remain the same
 import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import SuccessMessageModal from './modals/SuccessMessageModal.vue'
+
 import { editorOptions } from './editorOptions';
 import ValidationWarning from '@/components/common/ValidationWarning.vue';
 import apiClient from '@/utils/apiClient';
+=
+import ConfirmationModal from './modals/ConfirmationModal.vue'
+import apiClient from '@/utils/apiClient'
+
 
 export default {
   name: 'LetterEditModal',
   components: {
     QuillEditor,
     SuccessMessageModal,
+
     ValidationWarning
   },
   props: {
@@ -344,11 +473,29 @@ export default {
     letter: { type: Object, default: () => ({}) },
     recipients: { type: Array, default: () => [] },
     editMode: { type: Boolean, default: false }
+
+    ConfirmationModal
   },
+  props: {
+    modelValue: {
+      type: Boolean,
+      default: false
+    },
+    letter: {
+      type: Object,
+      required: true
+    },
+    recipients: {
+      type: Array,
+      default: () => []
+    }
+
   data() {
     return {
+      localLetter: {},
       showConfirmModal: false,
       showSuccess: false,
+      successMessage: 'Letter has been successfully updated!',
       isSubmitting: false,
       isTemplateLoading: false,
       showTemplateModal: false,
@@ -397,11 +544,37 @@ export default {
             id: recipient.id.toString() || ''
           }))
         : [];
+
+      errors: {},
+      recipientsList: [],
+      templates: [],
+      editorConfig: {
+        theme: 'snow',
+        modules: {
+          toolbar: [
+            ['bold', 'italic', 'underline', 'strike'],
+            ['blockquote', 'code-block'],
+            [{ 'header': 1 }, { 'header': 2 }],
+            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+            [{ 'script': 'sub'}, { 'script': 'super' }],
+            [{ 'indent': '-1'}, { 'indent': '+1' }],
+            [{ 'direction': 'rtl' }],
+            [{ 'size': ['small', false, 'large', 'huge'] }],
+            [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+            [{ 'color': [] }, { 'background': [] }],
+            [{ 'font': [] }],
+            [{ 'align': [] }],
+            ['clean']
+          ]
+        }
+      }
+
     }
   },
   watch: {
     letter: {
       immediate: true,
+
       handler(newLetter) {
         if (newLetter) {
           this.formData = {
@@ -593,6 +766,55 @@ export default {
         this.loadTemplate(newVal);
       }
     }
+  }
+},
+</script>
+
+      handler(newVal) {
+        this.localLetter = JSON.parse(JSON.stringify(newVal))
+      }
+    }
   },
+  
+  // ... rest of the component logic ...
 }
 </script>
+
+<style scoped>
+/* Modal transitions */
+.modal-enter-active,
+.modal-leave-active {
+  transition: all 0.3s ease-out;
+}
+
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
+  transform: scale(0.95);
+}
+
+.modal-enter-to,
+.modal-leave-from {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Interactive elements transitions */
+button {
+  transition: all 0.2s ease-in-out;
+}
+
+input, select, textarea {
+  transition: border-color 0.2s ease-in-out;
+}
+
+.recipient-select:hover {
+  border-color: #3B82F6;
+}
+
+.recipient-remove-button:hover {
+  background-color: #FEE2E2;
+}
+</style>
+
+>>>>>>> 2nd-backup
