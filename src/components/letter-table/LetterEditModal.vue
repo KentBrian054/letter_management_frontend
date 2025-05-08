@@ -11,8 +11,9 @@
             <!-- Title input centered with white background -->
             <div class="flex-1 flex justify-center mx-6">
               <div class="flex flex-col w-[350px] bg-white rounded-lg shadow-sm">
+                <!-- Change all v-model bindings from letter to formData -->
                 <input
-                  v-model="formData.title"
+                  v-model="letter.title"
                   :class="{'border-red-500': errors && errors.title}"
                   type="text"
                   required
@@ -72,6 +73,7 @@
                   <label class="font-medium w-24 text-lg">Type:</label>
                   <div class="flex flex-col">
                     <div class="relative">
+                      <!-- Update the template bindings -->
                       <select
                         v-model="letter.type"
                         required
@@ -94,8 +96,10 @@
                 <div class="flex items-center gap-4 ml-8">
                   <label class="font-medium w-24 text-lg">Template:</label>
                   <div class="relative">
+                    <!-- Update the template select binding -->
                     <select
                       v-model="selectedTemplate"
+                      @change="handleTemplateChange"
                       class="w-[200px] border rounded-md px-4 py-2 text-base bg-white appearance-none pr-10"
                       :disabled="isTemplateLoading"
                     >
@@ -369,11 +373,14 @@ export default {
   },
   async created() {
     try {
+      // Remove the fetchCSRFToken call
+      
       // Fetch recipients
       const response = await apiClient.get('/recipients');
       this.recipientsList = Array.isArray(response.data) 
         ? response.data 
         : response.data.data || [];
+        
       // Fetch templates
       const templatesResponse = await apiClient.get('/templates');
       this.templates = templatesResponse.data.data || templatesResponse.data;
@@ -443,23 +450,29 @@ export default {
       try {
         this.isSubmitting = true;
         this.showConfirmModal = false;
+        
+        // Ensure all fields have at least empty string values
         const formData = {
           ...this.formData,
-          recipients: this.formData.recipients.map(r => ({
-            id: r.id,
-            name: r.name,
-            position: r.position
-          })).filter(r => r.id)
+          title: this.formData.title || '',
+          type: this.formData.type || '',
+          subject: this.formData.subject || '',
+          date: this.formData.date || '',
+          content: this.formData.content || '',
+          sender_name: this.formData.sender_name || '',
+          sender_position: this.formData.sender_position || '',
+          recipients: this.formData.recipients
+            .map(r => ({
+              id: r.id || '',
+              name: r.name || '',
+              position: r.position || ''
+            }))
+            .filter(r => r.id)
         };
-        const response = await axios.put(
-          `http://192.168.5.34:8000/api/letters/${this.letter.id}`, 
-          formData,
-          {
-            headers: {
-              'Accept': 'application/json',
-              'Content-Type': 'application/json'
-            }
-          }
+    
+        const response = await apiClient.put(
+          `/letters/${this.letter.id}`, 
+          formData
         );
         this.$emit('refresh-letters');
         this.showSuccess = true;
@@ -474,128 +487,39 @@ export default {
         this.isSubmitting = false;
       }
     },
-    async loadTemplate(templateId) {
-      try {
-        this.isTemplateLoading = true;
-        const response = await apiClient.get(`/api/templates/${templateId}`);
-        const template = response.data.data || response.data;
-        
-        // Update letter data with template data
-        this.letter = {
-          ...this.letter,
-          type: template.type,
-          subject: template.subject,
-          content: template.content,
-          sender_name: template.sender_name,
-          sender_position: template.sender_position,
-          recipients: template.recipients.map(r => ({
-            id: r.id,
-            name: r.name,
-            position: r.position
-          }))
-        };
-        
-        // Also update formData to keep it in sync
-        this.formData = {
-          ...this.formData,
-          type: template.type,
-          subject: template.subject,
-          content: template.content,
-          sender_name: template.sender_name,
-          sender_position: template.sender_position,
-          recipients: template.recipients.map(r => ({
-            id: r.id,
-            name: r.name,
-            position: r.position
-          }))
-        };
-        
-        this.errors = {};
-      } catch (error) {
-        console.error('Error loading template:', error);
-        this.errors.template = 'Failed to load template';
-      } finally {
-        this.isTemplateLoading = false;
+    handleTemplateChange(event) {
+      this.selectedTemplate = event.target.value;
+      if (this.selectedTemplate) {
+        this.loadTemplate(this.selectedTemplate);
       }
     },
-    handleQuickSave() {
-      if (!this.validateForm()) {
-        return;
-      }
-      this.showTemplateModal = true;
-    },
-    async confirmQuickSave() {
-      try {
-        this.isSubmitting = true;
-        this.showTemplateModal = false;
     
-        const formData = {
-          name: this.templateName,
-          type: this.formData.type,
-          subject: this.formData.subject,
-          date: this.formData.date,
-          content: this.formData.content,
-          sender_name: this.formData.sender_name,
-          sender_position: this.formData.sender_position,
-          recipients: this.formData.recipients
-            .filter(r => r.id)
-            .map(r => ({
-              id: r.id,
-              name: r.name,
-              position: r.position
-            }))
-        };
-    
-        const response = await apiClient.post('/templates', formData);
-        const newTemplate = response.data?.data || response.data;
-        this.templates = [
-          ...this.templates,
-          {
-            id: newTemplate.id,
-            name: newTemplate.name,
-          }
-        ];
-    
-        this.selectedTemplate = newTemplate.id;
-        this.templateName = '';
-        this.showSuccess = true;
-        setTimeout(() => {
-          this.showSuccess = false;
-          this.$emit('update:modelValue', false);
-        }, 1500);
-      } catch (error) {
-        console.error('Template save error:', error);
-        this.errors.submit = error.response?.data?.message || 'Template save failed';
-      } finally {
-        this.isSubmitting = false;
-      }
-    },
     async loadTemplate(templateId) {
       try {
         this.isTemplateLoading = true;
         const response = await apiClient.get(`/templates/${templateId}`);
         const template = response.data.data || response.data;
+    
+        // Update individual properties to maintain reactivity
+        this.letter.title = template.name;
+        this.letter.type = template.type;
+        this.letter.subject = template.subject;
+        this.letter.date = this.formatDateForInput(template.date);
+        this.letter.content = template.content;
+        this.letter.sender_name = template.sender_name;
+        this.letter.sender_position = template.sender_position;
         
-        this.formData = {
-          ...this.formData,
-          title: template.name,
-          type: template.type,
-          subject: template.subject,
-          date: this.formatDateForInput(template.date),
-          content: template.content,
-          sender_name: template.sender_name,
-          sender_position: template.sender_position,
-          recipients: template.recipients.map(r => ({
-            id: r.id,
-            name: r.name,
-            position: r.position
-          }))
-        };
-        
+        // Replace recipients array completely
+        this.letter.recipients = template.recipients.map(r => ({
+          id: r.id,
+          name: r.name,
+          position: r.position
+        }));
+    
         this.errors = {};
       } catch (error) {
         console.error('Error loading template:', error);
-        this.errors.submit = 'Failed to load template';
+        this.errors = { template: 'Failed to load template' };
       } finally {
         this.isTemplateLoading = false;
       }
