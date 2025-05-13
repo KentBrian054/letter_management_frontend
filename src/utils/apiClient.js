@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const apiClient = axios.create({
-  baseURL: 'http://192.168.5.34:8000/api',
+  baseURL: 'http://192.168.5.94:8000/api', // Make sure this matches your actual API URL
   timeout: 30000,
   withCredentials: true,
   headers: {
@@ -11,15 +11,21 @@ const apiClient = axios.create({
   }
 });
 
-// Add request interceptor for retry logic and CSRF token
+// Modify request interceptor to handle CSRF token more gracefully
 apiClient.interceptors.request.use(
   async config => {
-    // Get CSRF token before making request
-    if (!document.cookie.includes('XSRF-TOKEN')) {
-      await axios.get('http://192.168.5.34:8000/sanctum/csrf-cookie');
+    try {
+      // Only attempt to get CSRF token if it's not a GET request and token is missing
+      if (config.method !== 'get' && !document.cookie.includes('XSRF-TOKEN')) {
+        await axios.get('http://192.168.5.94:8000/sanctum/csrf-cookie', {
+          timeout: 5000 // Add shorter timeout for CSRF request
+        });
+      }
+    } catch (error) {
+      console.warn('CSRF token fetch failed:', error);
+      // Continue with request even if CSRF fetch fails
     }
     
-    // Remove cache-control header
     if (config.headers) {
       delete config.headers['cache-control'];
     }

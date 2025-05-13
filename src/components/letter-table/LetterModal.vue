@@ -412,7 +412,16 @@ export default {
       default: false
     }
   },
-  emits: ['update:modelValue', 'close', 'save-letter', 'update-letter', 'refresh-letters'],
+  emits: [
+    'update:modelValue',
+    'close',
+    'save-letter',
+    'update-letter',
+    'refresh-letters',
+    'update:editMode',
+    'save', // Add this line
+    'error' // Add this line if you're using error events
+  ],
   data() {
     const defaultForm = {
       title: '',
@@ -544,7 +553,7 @@ export default {
     async fetchCSRFToken() {
       try {
         const response = await apiClient.get('/sanctum/csrf-cookie', {
-          baseURL: 'http://192.168.5.34:8000' // Updated IP address
+          baseURL: 'http://192.168.5.94:8000' // Updated IP address
         });
         
         if (!response) {
@@ -565,6 +574,12 @@ export default {
       try {
         await this.fetchCSRFToken();
         
+        // Fetch both recipients and templates
+        await Promise.all([
+          this.fetchRecipients(),
+          this.fetchTemplates()
+        ]);
+
         if (this.letter && Object.keys(this.letter).length > 0) {
           this.editMode = true;
           const formattedRecipients = Array.isArray(this.letter.recipients) 
@@ -600,7 +615,7 @@ export default {
         this.fetchRecipients();
       } catch (error) {
         console.error('Component initialization error:', error);
-        this.$emit('error', error.message); // Emit error event
+        this.$emit('error', error.message);
         this.closeModal();
       }
     },  // Add comma here
@@ -630,166 +645,52 @@ export default {
     async fetchRecipients() {
       try {
         const response = await apiClient.get('/recipients');
-        // Ensure consistent data structure
-        this.recipientsList = response.data.data || response.data;
+        // Match the API response structure
+        this.recipientsList = response.data.data;
+        
+        // Update existing recipients with complete data
+        if (this.letterForm.recipients) {
+          this.letterForm.recipients = this.letterForm.recipients.map(recipient => {
+            const found = this.recipientsList.find(r => r.id === recipient.id);
+            return found ? {
+              id: found.id,
+              name: found.name,
+              position: found.position
+            } : recipient;
+          });
+        }
       } catch (error) {
         console.error('Error fetching recipients:', error);
         this.recipientsList = [];
       }
     },
-    updateRecipient(index, recipientId) {
-      if (!recipientId) {
-        this.letterForm.recipients[index] = { id: '', name: '', position: '' };
-        return;
-      }
-      
-      const selectedRecipient = this.recipientsList.find(r => 
-        r.id === parseInt(recipientId)
-      );
-      
-      if (selectedRecipient) {
-        // Replace this.$set with direct assignment and array copy
-        this.letterForm.recipients = [
-          ...this.letterForm.recipients.slice(0, index),
-          {
-            id: selectedRecipient.id,
-            name: selectedRecipient.name,
-            position: selectedRecipient.position
-          },
-          ...this.letterForm.recipients.slice(index + 1)
-        ];
-      }
-      this.clearError('recipients');
-    },  // Add comma here
-    handleBack() {
-      // Reset form and close modal
-      this.errors = {};
-      this.letterForm = {
-        title: '',
-        type: '',
-        subject: '',
-        date: new Date().toISOString().split('T')[0],
-        recipients: [{ id: '', name: '', position: '' }],
-        content: '',
-        sender_name: '',
-        sender_position: ''
-      };
-      this.closeModal();
-    },
-    validateForm() {
-      this.errors = {};
-      let isValid = true;
 
-      // Validate title
-      if (!this.letterForm.title?.trim()) {
-        this.errors.title = 'Title is required';
-        isValid = false;
-      }
-
-      // Validate type
-      if (!this.letterForm.type?.trim()) {
-        this.errors.type = 'Type is required';
-        isValid = false;
-      }
-
-      // Validate subject
-      if (!this.letterForm.subject?.trim()) {
-        this.errors.subject = 'Subject is required';
-        isValid = false;
-      }
-
-      // Validate date
-      if (!this.letterForm.date) {
-        this.errors.date = 'Date is required';
-        isValid = false;
-      }
-
-      // Validate content
-      if (!this.letterForm.content?.trim()) {
-        this.errors.content = 'Content is required';
-        isValid = false;
-      }
-
-      // Validate sender info
-      if (!this.letterForm.sender_name?.trim()) {
-        this.errors.sender_name = 'Sender name is required';
-        isValid = false;
-      }
-
-      if (!this.letterForm.sender_position?.trim()) {
-        this.errors.sender_position = 'Sender position is required';
-        isValid = false;
-      }
-
-      // Validate recipients
-      const hasEmptyRecipients = this.letterForm.recipients.some(r => !r.id);
-      if (hasEmptyRecipients) {
-        this.errors.recipients = 'All recipients must be selected';
-        isValid = false;
-      }
-
-      return isValid;
-    },
-
-    handleSubmit() {
-      if (!this.validateForm()) {
-        return;
-      }
-      // Show confirmation modal instead of direct submission
-      this.showConfirmModal = true;
-    },
-
-    // In confirmSubmit method
-    async confirmSubmit() {
+    async loadTemplate(templateId) {
       try {
-        this.isSubmitting = true;
-        this.showConfirmModal = false; // Hide confirmation modal
+        this.isTemplateLoading = true;
+        const response = await apiClient.get(`/templates/${templateId}`);
+        const template = response.data.data;
         
-        // Prepare the data with full recipient objects
-        const formData = {
-          title: this.letterForm.title,
-          type: this.letterForm.type,
-          subject: this.letterForm.subject,
-          date: this.letterForm.date,
-          content: this.letterForm.content,
-          sender_name: this.letterForm.sender_name,
-          sender_position: this.letterForm.sender_position,
-          recipients: this.letterForm.recipients
-            .filter(r => r.id)
-            .map(r => ({
+        if (template) {
+          // Update form with template data
+          this.letterForm = {
+            ...this.letterForm,
+            type: template.type,
+            subject: template.subject,
+            content: template.content,
+            recipients: template.recipients?.map(r => ({
               id: r.id,
               name: r.name,
               position: r.position
-            }))
-        };
-    
-        let response;
-        if (this.editMode) {
-          response = await apiClient.put(`/letters/${this.letter.id}`, formData);
-        } else {
-          response = await apiClient.post('/letters', formData);
+            })) || []
+          };
         }
-
-        this.$emit('refresh-letters', { sortDescending: !this.editMode }); // Add sort parameter
-        this.showSuccess = true;
-        setTimeout(() => {
-          this.closeModal();
-        }, 1500);
-        
       } catch (error) {
-        console.error('Error submitting letter:', error);
-        this.errors = error.response?.data?.errors || {};
-        this.errors.submit = error.response?.data?.message || 'Failed to save letter';
+        console.error('Error loading template:', error);
+        this.errors.template = 'Failed to load template';
       } finally {
-        this.isSubmitting = false;
+        this.isTemplateLoading = false;
       }
-    },  // <-- Add this comma
-    
-    async handleQuickSave() {
-      if (!this.validateForm()) {
-        return;
-      }
-      this.showTemplateModal = true;
     },
 
     async confirmQuickSave() {
@@ -801,10 +702,7 @@ export default {
           name: this.templateName,
           type: this.letterForm.type,
           subject: this.letterForm.subject,
-          date: this.letterForm.date,
           content: this.letterForm.content,
-          sender_name: this.letterForm.sender_name,
-          sender_position: this.letterForm.sender_position,
           recipients: this.letterForm.recipients
             .filter(r => r.id)
             .map(r => ({
@@ -814,31 +712,36 @@ export default {
             }))
         };
 
-        // Use your template store route
-        const response = await apiClient.post('/templates', formData);
-
-        // Adjust API response handling
-        const newTemplate = response.data?.data || response.data;
+        let response;
+        if (this.selectedTemplate) {
+          // Update existing template
+          response = await apiClient.put(`/templates/${this.selectedTemplate}`, formData);
+        } else {
+          // Create new template
+          response = await apiClient.post('/templates', formData);
+        }
         
-        // Update templates list reactively
-        this.templates = [
-          ...this.templates,
-          {
-            id: newTemplate.id,
-            name: newTemplate.name,
-            // Include other necessary template properties
-          }
-        ];
-
-        // Select the new template
-        this.selectedTemplate = newTemplate.id;
+        const template = response.data.data;
+        
+        // Update templates list
+        if (this.selectedTemplate) {
+          this.templates = this.templates.map(t => 
+            t.id === template.id ? template : t
+          );
+        } else {
+          this.templates.push(template);
+        }
 
         this.templateName = '';
+        this.selectedTemplate = template.id;
         this.showSuccess = true;
-        setTimeout(() => this.closeModal(), 1500);
+        
+        setTimeout(() => {
+          this.showSuccess = false;
+        }, 1500);
       } catch (error) {
         console.error('Template save error:', error);
-        this.errors.submit = error.response?.data?.message || 'Template save failed';
+        this.errors.template = error.response?.data?.message || 'Failed to save template';
       } finally {
         this.isSubmitting = false;
       }
@@ -856,7 +759,7 @@ export default {
       try {
         this.isTemplateLoading = true;
         const response = await apiClient.get(`/templates/${templateId}`);
-        const template = response.data.data || response.data;
+        const template = response.data.data;
         
         this.letterForm = {
           ...this.letterForm,

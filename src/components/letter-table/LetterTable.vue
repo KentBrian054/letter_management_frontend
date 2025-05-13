@@ -117,12 +117,11 @@
         <div class="flex items-center justify-center min-h-screen p-4">
           <div class="relative bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4">
             <LetterModal
-              v-model="showModal"  
+              v-model="showModal"
               :letter="selectedLetter"
-              @close="closeModal"
-              @save-letter="handleLetterSaved"
-              @update-letter="handleLetterSaved"
-              @refresh-letters="handleRefreshLetters"
+              @save-letter="handleSaveLetter"
+              @update-letter="handleUpdateLetter"
+              @refresh-letters="fetchLetters"
             />
           </div>
         </div>
@@ -177,7 +176,7 @@
       v-model="showEditModal"
       :letter="selectedLetter"
       :recipients="recipients"
-      @save="handleLetterSaved"
+      @save-letter="handleLetterSaved"  
     />
   </div>
 </template>

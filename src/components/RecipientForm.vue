@@ -99,37 +99,43 @@
   </div>
 </template>
 
-<script>
-import axios from 'axios';
-import { debounce } from 'lodash';
+<script lang="ts">
+import { defineComponent } from 'vue'
+import axios from 'axios'
+import { debounce } from 'lodash-es' // Changed to lodash-es for better TypeScript support
 
-export default {
+interface RecipientForm {
+  name: string
+  department: string
+}
+
+export default defineComponent({
   data() {
     return {
       recipientForm: {
         name: '',
         department: ''
-      },
+      } as RecipientForm,
       showSuccessModal: false
-    };
+    }
   },
   methods: {
-    handleSubmit: debounce(async function() {
+    handleSubmit: debounce(async function(this: any) {
       try {
-        const response = await axios.post('http://192.168.100.11:8000/api/recipients', this.recipientForm, {
+        const response = await axios.post('http://192.168.5.94:8000/api/recipients', this.recipientForm, {
           headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json'
           },
           timeout: 5000
-        });
+        })
         
-        this.$emit('recipient-added', response.data);
-        this.$emit('refresh-recipients');
+        this.$emit('recipient-added', response.data)
+        this.$emit('refresh-recipients')
         
-        this.recipientForm = { name: '', department: '' };
-        this.showSuccessModal = true;
-      } catch (error) {
+        this.recipientForm = { name: '', department: '' }
+        this.showSuccessModal = true
+      } catch (error: any) {
         console.error('Save failed:', error);
         let errorMessage = 'Error saving recipient. ';
         if (error.code === 'ERR_NETWORK') {
@@ -147,9 +153,9 @@ export default {
     }, 1000),
 
     handleSuccessClose() {
-      this.showSuccessModal = false;
-      this.$emit('close');
+      this.showSuccessModal = false
+      this.$emit('close')
     }
   }
-};
+})
 </script>
