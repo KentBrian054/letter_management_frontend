@@ -414,7 +414,8 @@ export default {
     },
     editMode: {
       type: Boolean,
-      required: true  // If parent component must provide this
+      required: false, // Change from required: true
+      default: false
     }
   },
   emits: ['update:modelValue', 'close', 'save-letter', 'update-letter', 'refresh-letters', 'update:editMode'],
@@ -568,52 +569,6 @@ export default {
       }
     },
 
-    async created() {
-      try {
-        await this.fetchCSRFToken();
-        
-        // Add template fetching
-        const templatesResponse = await apiClient.get('/templates');
-        this.templates = templatesResponse.data.data || templatesResponse.data;
-
-        if (this.letter && Object.keys(this.letter).length > 0) {
-          // Instead of setting editMode directly, emit an event
-          this.$emit('update:editMode', true);
-          
-          const formattedRecipients = Array.isArray(this.letter.recipients) 
-            ? this.letter.recipients.map(r => {
-                if (typeof r === 'object') {
-                  return {
-                    id: r.id || '',
-                    name: r.name || '',
-                    position: r.position || ''
-                  };
-                } else {
-                  return {
-                    id: r,
-                    name: '',
-                    position: ''
-                  };
-                }
-              })
-            : [{
-                id: this.letter.recipients?.id || this.letter.recipients || '',
-                name: this.letter.recipients?.name || '',
-                position: this.letter.recipients?.position || ''
-              }];
-          
-          this.letterForm = {
-            ...this.letter,
-            date: this.formatDateForInput(this.letter.date),
-            recipients: formattedRecipients
-          };
-        }
-        await this.fetchRecipients();
-      } catch (error) {
-        console.error('Component initialization error:', error);
-        this.closeModal();
-      }
-    },  // Add comma here
     formatDateForInput(dateString) {
       if (!dateString) return '';
       const date = new Date(dateString);

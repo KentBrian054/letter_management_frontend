@@ -172,7 +172,7 @@
     </div>
 
     <!-- Update the LetterEditModal component usage -->
-    // In the template section, update the LetterEditModal usage:
+    
     <LetterEditModal
       v-model="showEditModal"
       :letter="selectedLetter || { 
@@ -188,22 +188,7 @@
       @refresh-letters="fetchLetters"
       @close="resetSelection"
     />
-    
-    // In methods, update the handleNewLetterClick:
-    handleNewLetterClick() {
-      this.showModal = true;
-      this.selectedLetter = null;
-      this.$nextTick(() => {
-        this.showEditModal = true;
-      });
-    },
-    
-    // Update the resetSelection method:
-    resetSelection() {
-      this.selectedLetter = null;
-      this.showEditModal = false;
-      this.showModal = false;
-    },
+  
   </div>
 </template>
 
@@ -441,7 +426,7 @@ export default {
           type: letterData.type,
           date: letterData.date ? this.formatDateForInput(letterData.date) : this.formatDateForInput(new Date()),
           // Use IDs directly from form data
-          recipients: letterData.recipients,
+          recipients: letterData.recipients.filter(r => r !== null), // Add filter to remove null entries
           content: letterData.content?.trim(),
           sender_name: letterData.sender_name?.trim(),
           sender_position: letterData.sender_position?.trim()
@@ -479,28 +464,24 @@ export default {
           if (!value) throw new Error(`${field} is required`);
         }
 
-        // Rest of the method remains the same
-        // Ensure recipients are properly formatted with name/position
-        const recipients = [];
-        if (Array.isArray(letterData.recipients)) {
-          for (const recipient of letterData.recipients) {
-            if (typeof recipient === 'object') {
-              recipients.push({
-                name: (recipient.name || '').trim(),
-                position: (recipient.position || '').trim()
-              });
-            } else {
-              // Handle case where recipient is just an ID
-              const foundRecipient = this.recipients.find(r => r.id === recipient);
-              if (foundRecipient) {
-                recipients.push({
-                  name: foundRecipient.name.trim(),
-                  position: foundRecipient.position.trim()
-                });
-              }
-            }
-          }
-        }
+        // Remove this initial recipients declaration:
+        // const recipients = [];
+        // if (Array.isArray(letterData.recipients)) {
+        //   for (const recipient of letterData.recipients) {
+        //     ...
+        //   }
+        // }
+
+        // Keep only this single declaration:
+        const recipients = letterData.recipients
+          .filter(r => r !== null)
+          .map(recipient => {
+            if (typeof recipient === 'object') return recipient;
+            const found = this.recipients.find(r => r.id === recipient);
+            return found ? { name: found.name, position: found.position } : null;
+          })
+          .filter(Boolean);
+
         if (recipients.length === 0) {
           throw new Error('At least one recipient with a name is required');
         }
