@@ -485,7 +485,7 @@ export default {
     async fetchLetters() {
       try {
         this.isFetching = true;
-        const response = await apiClient.get('/letters', {
+        const response = await apiClient.get('/api/letters', {
           params: {
             sort: '-updated_at'
           }

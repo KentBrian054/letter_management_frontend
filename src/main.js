@@ -6,13 +6,12 @@ import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import Toast from 'vue-toastification'
 import 'vue-toastification/dist/index.css'
-import axios from 'axios'
-
-// Configure axios globally
-axios.defaults.baseURL = 'http://192.168.5.93:8000/api'
-axios.defaults.withCredentials = true
+import apiClient from './utils/apiClient'
 
 const app = createApp(App)
+
+// Register global properties
+app.config.globalProperties.$http = apiClient
 
 // Register QuillEditor globally
 app.component('QuillEditor', QuillEditor)

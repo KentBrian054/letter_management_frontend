@@ -102,7 +102,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue'
 import axios from 'axios'
-import { debounce } from 'lodash-es' // Using ES modules version of lodash to avoid casing issues
+import debounce from 'lodash-es/debounce' // Fixed import statement
 
 interface RecipientForm {
   name: string
@@ -122,7 +122,7 @@ export default defineComponent({
   methods: {
     handleSubmit: debounce(async function(this: any) {
       try {
-        const response = await axios.post('http://192.168.5.94:8000/api/recipients', this.recipientForm, {
+        const response = await axios.post('http://192.168.1.8:8000/api/recipients', this.recipientForm, {
           headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json'

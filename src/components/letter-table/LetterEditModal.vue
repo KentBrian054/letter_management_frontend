@@ -552,15 +552,26 @@ export default {
   methods: {
     async fetchCSRFToken() {
       try {
-        const response = await apiClient.get('/sanctum/csrf-cookie');
-        // Remove the baseURL parameter completely
+        // Add timeout and retry logic
+        const response = await apiClient.get('/sanctum/csrf-cookie', {
+          timeout: 5000, // 5 second timeout
+          retry: 3 // Retry 3 times
+        });
+        
         if (!response) {
           throw new Error('No response from server');
         }
         return response;
       } catch (error) {
         console.error('Error fetching CSRF token:', error);
-        // Provide more helpful error message
+        
+        // More specific error messages
+        if (error.code === 'ERR_NETWORK') {
+          throw new Error('Cannot connect to the server. Please check if the backend server is running.');
+        } else if (error.code === 'ECONNABORTED') {
+          throw new Error('Connection timed out. Please check your network connection.');
+        }
+        
         const errorMsg = error.response?.status === 404 
           ? 'CSRF endpoint not found. Check your API configuration.'
           : error.message || 'Failed to fetch CSRF token';
@@ -985,8 +996,4 @@ export default {
 }
 </style>
 
-showPdfPreviewButton(index) {
-  this.pdfPreviewIndex = index;
-},
-previewRecipientPdf(recipient) {
-  // Placeholder: Replace with your actual PDF preview logic
+

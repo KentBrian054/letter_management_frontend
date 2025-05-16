@@ -1,26 +1,31 @@
 import axios from 'axios';
 
 const apiClient = axios.create({
-  baseURL: 'http://192.168.5.94:8000/api', // Updated IP address
+  baseURL: 'http://192.168.1.8:8000',
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
-  }
+  },
+  timeout: 30000
 });
 
-// Add request interceptor to handle CSRF token
 apiClient.interceptors.request.use(async config => {
-  try {
-    if (config.method !== 'get') {
-      // FIX: Remove '/api' from the CSRF cookie URL
-      await axios.get('http://192.168.5.94:8000/sanctum/csrf-cookie', { withCredentials: true });
-    }
-    return config;
-  } catch (error) {
-    console.error('CSRF token fetch failed:', error);
-    return config;
+  // Add /api prefix for all requests
+  if (!config.url.startsWith('/api')) {
+    config.url = '/api' + config.url;
   }
+  return config;
 });
+
+apiClient.interceptors.response.use(
+  response => response,
+  error => {
+    if (error.code === 'ECONNABORTED') {
+      error.message = 'Request timeout. Please check your network connection.';
+    }
+    return Promise.reject(error);
+  }
+);
 
 export default apiClient;
