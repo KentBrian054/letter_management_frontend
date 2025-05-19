@@ -111,7 +111,7 @@
                         <select
                           v-model="selectedTemplate"
                           class="w-[200px] border rounded-md px-4 py-2 text-base bg-white appearance-none pr-10"
-                          @change="clearError('template')"
+                          @change="handleTemplateChange"
                           :disabled="isTemplateLoading"
                         >
                           <option value="">Select Template</option>
@@ -521,10 +521,9 @@ export default {
 
       if (this.letter && Object.keys(this.letter).length > 0) {
         // Instead of mutating prop directly
-        this.$emit('update:editMode', true); // Change this line
+        this.$emit('update:editMode', true);
         const formattedRecipients = Array.isArray(this.letter.recipients) 
           ? this.letter.recipients.map(r => {
-              // Handle both object and ID formats
               if (typeof r === 'object') {
                 return {
                   id: r.id || '',
@@ -532,7 +531,6 @@ export default {
                   position: r.position || ''
                 };
               } else {
-                // If it's just an ID, we'll populate name/position after fetching recipients
                 return {
                   id: r,
                   name: '',
@@ -546,8 +544,14 @@ export default {
               position: this.letter.recipients?.position || ''
             }];
         
+        // Build a new object for letterForm, do NOT spread this.letter
         this.letterForm = {
-          ...this.letter,
+          title: this.letter.title || '',
+          type: this.letter.type || '',
+          subject: this.letter.subject || '',
+          content: this.letter.content || '',
+          sender_name: this.letter.sender_name || '',
+          sender_position: this.letter.sender_position || '',
           date: this.formatDateForInput(this.letter.date),
           recipients: formattedRecipients
         };
@@ -558,18 +562,61 @@ export default {
       this.closeModal();
     }
   },  // <-- Add this comma
+ 
   methods: {
+    async handleTemplateChange(eventOrId) {
+      // Accept both event object and direct ID
+      let templateId;
+      if (eventOrId && eventOrId.target) {
+        templateId = eventOrId.target.value;
+      } else {
+        templateId = eventOrId;
+      }
+      if (!templateId) return;
+
+      try {
+        this.isTemplateLoading = true;
+        const response = await apiClient.get(`/templates/${templateId}`);
+        const template = response.data.data || response.data;
+
+        // Build a new object for letterForm, do NOT spread this.letter or this.letterForm
+        this.letterForm = {
+          title: template.title || '',
+          type: template.type || '',
+          subject: template.subject || '',
+          content: template.content || '',
+          sender_name: template.sender_name || '',
+          sender_position: template.sender_position || '',
+          date: template.date || new Date().toISOString().split('T')[0],
+          recipients: template.recipients?.map(r => ({
+            id: r.id || '',
+            name: r.name || '',
+            position: r.position || ''
+          })) || [{ id: '', name: '', position: '' }]
+        };
+
+        this.clearErrors();
+      } catch (error) {
+        console.error('Error loading template:', error);
+        this.errors.template = 'Failed to load template';
+      } finally {
+        this.isTemplateLoading = false;
+      }
+    },
+
+    clearErrors() {
+      this.errors = {};
+    },
+
     async fetchCSRFToken() {
       try {
         const response = await apiClient.get('/sanctum/csrf-cookie');
-        // Remove the baseURL parameter completely
         if (!response) {
           throw new Error('No response from server');
         }
         return response;
       } catch (error) {
         console.error('Error fetching CSRF token:', error);
-        // Provide more helpful error message
         const errorMsg = error.response?.status === 404 
           ? 'CSRF endpoint not found. Check your API configuration.'
           : error.message || 'Failed to fetch CSRF token';
@@ -834,74 +881,21 @@ export default {
     previewRecipientPdf(recipient) {
       // Placeholder: Replace with your actual PDF preview logic
     }
-  }, // <-- Properly close methods object
+  }, // End of methods
 
   watch: {
     selectedTemplate(newVal) {
-      console.log('Selected template ID:', newVal);
       if (newVal) {
-        this.loadTemplate(newVal);
+        this.handleTemplateChange(newVal);
       }
     }
   }
-}
+} // End of component export default
+
 </script>
 
 <style>
 .prose {
   width: 100%;
-}
-/* Add these styles for better Quill editor formatting */
-.ql-editor {
-  font-size: 1rem;
-  line-height: 1.6;
-}
-
-.ql-editor p {
-  margin-bottom: 1em;
-}
-
-.ql-editor strong {
-  font-weight: 700;
-}
-
-.ql-editor h1 {
-  font-size: 2em;
-  margin-bottom: 0.5em;
-}
-
-.ql-editor h2 {
-  font-size: 1.5em;
-  margin-bottom: 0.5em;
-}
-
-.ql-snow .ql-editor pre {
-  white-space: pre-wrap;
-}
-
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-</style>
-
-<!-- Move the style block to the root level, after the </script> tag -->
-<style scoped>
-.type-memo {
-  @apply text-blue-600;
-}
-.type-endorsement {
-  @apply text-green-600;
-}
-.type-invitation {
-  @apply text-purple-600;
-}
-.type-letter_to_admin {
-  @apply text-orange-600;
 }
 </style>

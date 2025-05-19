@@ -37,8 +37,10 @@
           class="w-full border rounded-md px-3 py-2"
         >
           <option value="">All Types</option>
-          <option value="Business Letter">Business Letter</option>
           <option value="Memo">Memo</option>
+          <option value="Endorsement">Endorsement</option>
+          <option value="Invitation Meeting">Invitation Meeting</option>
+          <option value="Letter to Admin">Letter to Admin</option>
         </select>
       </div>
 
@@ -87,41 +89,23 @@ export default {
           start: '',
           end: ''
         }
-      }
-    }
-  },
-  watch: {
-    filters: {
-      immediate: true,
-      handler(newFilters) {
-        this.localFilters = {
-          searchQuery: newFilters.searchQuery || '',
-          searchSubject: newFilters.searchSubject || '',
-          searchRecipient: newFilters.searchRecipient || '',
-          selectedType: newFilters.selectedType || '',
-          dateRange: {
-            start: newFilters.dateRange?.start || '',
-            end: newFilters.dateRange?.end || ''
-          }
-        }
-      }
+      },
+      letterTypes: ['Memo', 'Endorsement', 'Invitation Meeting', 'Letter to Admin'] // Add letter types array
     }
   },
   methods: {
-    parseRecipients(recipientsString) {
-      try {
-        return JSON.parse(recipientsString);
-      } catch (e) {
-        console.error('Error parsing recipients:', e);
-        return [];
-      }
-    },
     updateFilters() {
+      // Ensure type filter matches exact values
+      if (this.localFilters.selectedType && !this.letterTypes.includes(this.localFilters.selectedType)) {
+        this.localFilters.selectedType = '';
+      }
+      
       // Parse recipients if they exist in the search
       if (this.localFilters.searchRecipient) {
         const searchTerm = this.localFilters.searchRecipient.toLowerCase();
         this.localFilters.searchRecipient = searchTerm;
       }
+      
       this.$emit('update:filters', this.localFilters);
     }
   }

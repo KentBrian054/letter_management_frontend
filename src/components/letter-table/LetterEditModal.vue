@@ -109,10 +109,11 @@
                     <div class="flex items-center gap-4 ml-8">
                       <label class="font-medium w-24 text-lg">Template:</label>
                       <div class="relative">
+                        <!-- In the template section, update the template select element -->
                         <select
                           v-model="selectedTemplate"
                           class="w-[200px] border rounded-md px-4 py-2 text-base bg-white appearance-none pr-10"
-                          @change="clearError('template')"
+                          @change="handleTemplateChange"
                           :disabled="isTemplateLoading"
                         >
                           <option value="">Select Template</option>
@@ -226,7 +227,7 @@
                   <label class="font-medium w-24 text-lg">Date:</label>
                   <div class="flex flex-col">
                     <input
-                      v-model="formattedDate"
+                      v-model="letter.date"
                       type="date"
                       required
                       class="w-[200px] border rounded-md px-4 py-2"
@@ -304,6 +305,7 @@
   </transition>
 
   <!-- Success Message Modal -->
+  <!-- Keep the imported ConfirmationModal component -->
   <ConfirmationModal
     :show="showConfirmModal"
     @confirm="confirmSubmit"
@@ -313,49 +315,10 @@
   <SuccessMessageModal 
     v-if="showSuccess"
     message="Updated successfully!"
-    @close="handleSuccessClose"
+    @close="showSuccess = false"
+    class="transition-opacity duration-300"
   />
 
-  <!-- Confirmation Modal -->
-  <div v-if="showConfirmModal" class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-    <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-      <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
-      <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-        <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-          <div class="sm:flex sm:items-start">
-            <div class="mt-3 text-center sm:mt-0 sm:text-left">
-              <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
-                Confirm Update
-              </h3>
-              <div class="mt-2">
-                <p class="text-sm text-gray-500">
-                  Are you sure you want to update this letter?
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-          <button
-            type="button"
-            @click="confirmSubmit"
-            class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm"
-          >
-            {{ editMode ? 'Update' : 'Save' }}
-          </button>
-          <button
-            type="button"
-            @click="showConfirmModal = false"
-            class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Add this after the Confirmation Modal -->
   <!-- Save as Template Modal -->
   <div v-if="showTemplateModal" class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
     <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
@@ -779,20 +742,22 @@ export default {
         this.isSubmitting = true;
         this.showConfirmModal = false;
     
-        // Use the same data conversion as handleSubmit
+        // Fix the form data structure
         const formData = {
-          title: this.letterForm.title?.toString() || '',
-          type: this.letterForm.type?.toString() || '',
-          subject: this.letterForm.subject?.toString() || '',
-          date: this.letterForm.date,
-          content: this.letterForm.content?.toString() || '',
-          sender_name: this.letterForm.sender_name?.toString() || '',
-          sender_position: this.letterForm.sender_position?.toString() || '',
-          recipients: this.letterForm.recipients.map(recipient => ({
-            id: recipient.id ? parseInt(recipient.id) : null,
-            name: recipient.name?.toString() || '',
-            position: recipient.position?.toString() || ''
-          })).filter(r => r.id !== null)
+          title: String(this.letter.title || ''),
+          type: String(this.letter.type || ''),
+          subject: String(this.letter.subject || ''),
+          date: this.letter.date,
+          content: String(this.letter.content || ''),
+          sender_name: String(this.letter.sender_name || ''),
+          sender_position: String(this.letter.sender_position || ''),
+          recipients: this.letter.recipients
+            .filter(r => r.id) // Filter out empty recipients
+            .map(recipient => ({
+              id: parseInt(recipient.id),
+              name: String(recipient.name || ''),
+              position: String(recipient.position || '')
+            }))
         };
     
         let response;
@@ -804,9 +769,16 @@ export default {
     
         this.$emit('refresh-letters', { sortDescending: !this.editMode });
         this.showSuccess = true;
+      
+        // Set timeout to hide success message after 5 seconds
         setTimeout(() => {
-          this.closeModal();
-        }, 1500);
+          this.showSuccess = false;
+          // Only close modal after success message disappears
+          setTimeout(() => {
+            this.closeModal();
+          }, 300); // Small delay after success message fades
+        }, 5000); // 5 seconds
+    
       } catch (error) {
         console.error('Error submitting letter:', error);
         this.errors = error.response?.data?.errors || {};
@@ -860,7 +832,6 @@ export default {
             // Include other necessary template properties
           }
         ];
-
         // Select the new template
         this.selectedTemplate = newTemplate.id;
 
@@ -874,7 +845,6 @@ export default {
         this.isSubmitting = false;
       }
     },  // <-- Add this comma
-
     clearError(field) {
       if (this.errors && this.errors[field]) {
         delete this.errors[field] // Changed from this.$delete to standard delete
@@ -883,57 +853,52 @@ export default {
     onContentInput() {
       this.clearError('content');
     },
-    async loadTemplate(templateId) {
+    async handleTemplateChange(eventOrId) {
+      let templateId;
+      if (eventOrId && eventOrId.target) {
+        templateId = eventOrId.target.value;
+      } else {
+        templateId = eventOrId;
+      }
+      if (!templateId) return;
+    
       try {
         this.isTemplateLoading = true;
         const response = await apiClient.get(`/templates/${templateId}`);
-        // Update to match your template response structure
         const template = response.data.data || response.data;
+    
+        // Create a new letter object with template data
+        const updatedLetter = {
+          ...this.letter,
+          title: template.title,
+          type: template.type,
+          subject: template.subject,
+          content: template.content,
+          sender_name: template.sender_name,
+          sender_position: template.sender_position,
+          date: this.formatDateForInput(template.date || new Date()),
+          recipients: template.recipients?.map(r => ({
+            id: r.id,
+            name: r.name,
+            position: r.position
+          })) || [{ id: '', name: '', position: '' }]
+        };
+    
+        // Update the letter object
+        Object.assign(this.letter, updatedLetter);
         
-        // Clear existing recipients before applying template
-        this.letterForm.recipients = template.recipients.map(r => ({
-          id: r.id,
-          name: r.name,
-          position: r.position
-        }));
-        
-        // Rest of the template loading logic remains the same
+        // Ensure the form is reactive
+        this.$nextTick(() => {
+          this.clearError('template');
+        });
       } catch (error) {
         console.error('Error loading template:', error);
-        this.errors.submit = 'Failed to load template';
+        this.errors.template = 'Failed to load template';
       } finally {
         this.isTemplateLoading = false;
       }
     },
-    validateForm() {
-      this.errors = {};
-      let isValid = true;
-
-      // Validate type with human-readable values
-      const validTypes = [
-        'Memo',
-        'Endorsement',
-        'Invitation Meeting',
-        'Letter to Admin'
-      ];
-      if (!this.letter.type || !validTypes.includes(this.letter.type)) {
-        this.errors.type = 'Please select a valid type';
-        isValid = false;
-      }
-
-      return isValid;
-    },
-  }, // <-- end of methods
-
-  // Move watch here, as a sibling to methods:
-  watch: {
-    selectedTemplate(newVal) {
-      console.log('Selected template ID:', newVal);
-      if (newVal) {
-        this.loadTemplate(newVal);
-      }
-    }
-  } // <-- Removed extra comma and fixed indentation
+  },
 }
 </script>
 
@@ -979,8 +944,6 @@ export default {
   opacity: 0;
 }
 </style>
-
-<!-- Move the style block to the root level, after the </script> tag -->
 <style scoped>
 .type-memo {
   @apply text-blue-600;
@@ -995,5 +958,3 @@ export default {
   @apply text-orange-600;
 }
 </style>
-
-

@@ -149,7 +149,7 @@ export default {
           headers: {
             'Accept': 'application/pdf'
           },
-          baseURL: 'http://192.168.1.8:8000'
+          baseURL: 'http://192.168.5.94:8000'
         });
 
         // Add response validation

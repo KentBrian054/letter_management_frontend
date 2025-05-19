@@ -293,7 +293,10 @@ export default {
       let filtered = this.letters.filter(letter => {
         const matchesTitle = letter.title?.toLowerCase().includes(this.searchQuery.toLowerCase()) ?? false;
         const matchesSubject = letter.subject?.toLowerCase().includes(this.searchSubject.toLowerCase()) ?? false;
-        const matchesType = this.selectedType ? letter.type === this.selectedType : true;
+        
+        // Updated type matching logic
+        const matchesType = !this.selectedType || 
+          letter.type?.toLowerCase() === this.selectedType.toLowerCase();
         
         const matchesRecipient = this.searchRecipient ? 
           (Array.isArray(letter.recipients) ? 
