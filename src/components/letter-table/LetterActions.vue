@@ -24,12 +24,12 @@
     <PreviewOptionsModal
       v-if="showPreviewModal"
       :letter="letter"
+      :is-preview-loading="isLoadingPDF"
+      :is-exporting="isConverting"
       @preview="handlePreviewPDF"
       @convert-pdf-to-word="handleExportWord"
       @close="showPreviewModal = false"
     />
-    
-    <!-- Remove the SuccessMessageModal component from here -->
 
     <!-- Error Message Modal -->
     <div v-if="showErrorMessage" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
@@ -49,11 +49,19 @@
       </div>
     </div>
 
-    <!-- Loading modal -->
+    <!-- Loading modal for Word export -->
     <div v-if="isConverting" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
       <div class="bg-white p-6 rounded-lg flex items-center gap-3">
         <component is="ArrowPathIcon" class="w-5 h-5 animate-spin" />
         <span>Exporting to Word...</span>
+      </div>
+    </div>
+
+    <!-- Loading modal for PDF preview -->
+    <div v-if="isLoadingPDF" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+      <div class="bg-white p-6 rounded-lg flex items-center gap-3">
+        <component is="ArrowPathIcon" class="w-5 h-5 animate-spin" />
+        <span>Generating PDF preview...</span>
       </div>
     </div>
   </div>
@@ -66,7 +74,8 @@ import {
   PencilIcon, 
   TrashIcon,
   ArrowPathIcon,
-  DocumentIcon 
+  DocumentIcon,
+  EyeIcon // Add this import
 } from '@heroicons/vue/24/solid'
 import SuccessMessageModal from './modals/SuccessMessageModal.vue'
 import PreviewOptionsModal from './modals/PreviewOptionsModal.vue'
@@ -80,7 +89,7 @@ export default {
     TrashIcon,
     ArrowPathIcon,
     DocumentIcon,
-    // Remove SuccessMessageModal from components
+    EyeIcon, // Add to components
     CSpinner,
     PreviewOptionsModal
   },
@@ -102,21 +111,9 @@ export default {
     }
   },
   methods: {
-    async handleExportWord() {
-      try {
-        this.isConverting = true;
-        this.showPreviewModal = false;
-        await this.$emit('convert-pdf-to-word', this.letter);
-      } catch (error) {
-        console.error('Export error:', error);
-        this.showErrorMessage = true;
-        this.errorMessage = 'Failed to export to Word. Please try again.';
-      } finally {
-        this.isConverting = false;
-      }
-    },
     async handlePreviewPDF() {
       try {
+        this.isLoadingPDF = true;
         if (!this.letter?.id) {
           throw new Error('No letter selected');
         }
@@ -168,18 +165,62 @@ export default {
         const url = window.URL.createObjectURL(blob);
         window.open(url, '_blank');
       } catch (error) {
-        console.error('PDF preview error:', {
-          message: error.message,
-          response: error.response?.data,
-          config: error.config
-        });
-        this.errorMessage = error.response?.data?.message || 
-                         error.response?.data?.error ||
-                         error.message || 
-                         'Failed to generate PDF preview. Please try again.';
+        console.error('Preview error:', error);
         this.showErrorMessage = true;
+        this.errorMessage = 'Failed to generate preview. Please try again.';
+      } finally {
+        this.isLoadingPDF = false;
       }
-    },
+    },  // Add comma here
+    async handleExportWord() {
+      try {
+        this.isConverting = true;
+        this.showPreviewModal = false;
+
+        // Map letter types to their corresponding export endpoints
+        const exportEndpointMap = {
+          'memo': `/export/memo/${this.letter.id}`,
+          'endorsement': `/export/endorsement/${this.letter.id}`,
+          'letter to admin': `/export/letter-to-admin/${this.letter.id}`,
+          'invitation meeting': `/export/invitation-meeting/${this.letter.id}`,
+        };
+
+        const normalizedType = this.letter.type?.trim().toLowerCase();
+        const endpoint = exportEndpointMap[normalizedType];
+
+        if (!endpoint) {
+          throw new Error(`Invalid letter type: ${this.letter.type}`);
+        }
+
+        const response = await apiClient.get(endpoint, {
+          responseType: 'blob',
+          headers: {
+            'Accept': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+          }
+        });
+
+        const blob = new Blob([response.data], {
+          type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        });
+        
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${this.letter.title || 'letter'}.docx`;
+        document.body.appendChild(link);
+        link.click();
+        
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+
+      } catch (error) {
+        console.error('Export error:', error);
+        this.showErrorMessage = true;
+        this.errorMessage = 'Failed to export to Word. Please try again.';
+      } finally {
+        this.isConverting = false;
+      }
+    },  // Add comma here
     handleEdit() {
       try {
         if (!this.letter) {
@@ -206,10 +247,9 @@ export default {
       } catch (error) {
         console.error('Edit error:', error);
       }
-    },
+    },  // Add comma here
     handleDelete() {
       this.$emit('delete', this.letter.id);
-      // Remove the success message handling from here
     }
   }
 }

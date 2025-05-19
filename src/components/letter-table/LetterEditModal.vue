@@ -405,7 +405,7 @@ export default {
   },
   emits: ['update:modelValue', 'close', 'save-letter', 'update-letter', 'refresh-letters', 'update:editMode'],
   data() {
-    const defaultForm = {
+    const defaultForm = { 
       title: '',
       type: '',
       subject: '',
@@ -416,29 +416,32 @@ export default {
       sender_position: '',
       pdfPreviewIndex: null // Add index tracking for PDF preview button
     };
-
+    
     return {
       editorOptions: {
         modules: {
           toolbar: [
-            ['bold', 'italic', 'underline', 'strike'],
-            ['blockquote', 'code-block'],
-            [{ 'header': 1 }, { 'header': 2 }],
-            [{ 'list': 'ordered' }, { 'list': 'bullet' }],
-            [{ 'script': 'sub' }, { 'script': 'super' }],
-            [{ 'indent': '-1' }, { 'indent': '+1' }],
-            [{ 'direction': 'rtl' }],
+            [{ 'font': [
+              'arial', 'calibri', 'cambria', 'times-new-roman', 'courier', 'georgia', 'garamond', 'tahoma', 'verdana', 'trebuchet', 'helvetica'
+            ] }],
             [{ 'size': ['small', false, 'large', 'huge'] }],
+            ['bold', 'italic', 'underline', 'strike'],
             [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
             [{ 'color': [] }, { 'background': [] }],
-            [{ 'font': [] }],
             [{ 'align': [] }],
+            ['blockquote', 'code-block'],
+            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+            [{ 'script': 'sub'}, { 'script': 'super' }],
+            [{ 'indent': '-1'}, { 'indent': '+1' }],
+            ['link'],
             ['clean']
           ]
         },
-        placeholder: 'Compose your letter...',
-        theme: 'snow'
+        theme: 'snow',
+        placeholder: 'Write your letter content here...'
       },
+      
+      // Remove the tooltip configuration from the modules
       letterForm: this.letter ? {
         title: this.letter.title || '',
         type: this.letter.type || '',
@@ -903,58 +906,6 @@ export default {
 </script>
 
 <style>
-.prose {
-  width: 100%;
-}
-/* Add these styles for better Quill editor formatting */
-.ql-editor {
-  font-size: 1rem;
-  line-height: 1.6;
-}
-
-.ql-editor p {
-  margin-bottom: 1em;
-}
-
-.ql-editor strong {
-  font-weight: 700;
-}
-
-.ql-editor h1 {
-  font-size: 2em;
-  margin-bottom: 0.5em;
-}
-
-.ql-editor h2 {
-  font-size: 1.5em;
-  margin-bottom: 0.5em;
-}
-
-.ql-snow .ql-editor pre {
-  white-space: pre-wrap;
-}
-
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
+@import './styles/quill-editor.css';
 </style>
-<style scoped>
-.type-memo {
-  @apply text-blue-600;
-}
-.type-endorsement {
-  @apply text-green-600;
-}
-.type-invitation_meeting {
-  @apply text-purple-600;
-}
-.type-letter_to_admin {
-  @apply text-orange-600;
-}
-</style>
+

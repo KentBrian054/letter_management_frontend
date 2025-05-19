@@ -241,6 +241,15 @@ import SearchFilters from './SearchFilters.vue';
 import TablePagination from './TablePagination.vue';
 import DeleteConfirmationModal from './modals/DeleteConfirmationModal.vue';
 import LetterEditModal from './LetterEditModal.vue';
+import { QuillEditor } from '@vueup/vue-quill'
+import '@vueup/vue-quill/dist/vue-quill.snow.css'
+
+// Add these Quill configurations
+import Quill from 'quill'
+import Tooltip from 'quill/ui/tooltip'
+
+// Register required modules
+Quill.register('modules/tooltip', Tooltip)
 
 export default {
   name: 'LetterTable',
@@ -643,15 +652,27 @@ export default {
           throw new Error('Invalid letter ID');
         }
 
-        // Updated endpoint to use export endpoint
-        const response = await apiClient.get(`/letters/${letter.id}/export`, {
+        const exportEndpointMap = {
+          'memo': `/export/memo/${letter.id}`,
+          'endorsement': `/export/endorsement/${letter.id}`,
+          'letter to admin': `/export/letter-to-admin/${letter.id}`,
+          'invitation meeting': `/export/invitation-meeting/${letter.id}`,
+        };
+
+        const normalizedType = letter.type?.trim().toLowerCase();
+        const endpoint = exportEndpointMap[normalizedType];
+
+        if (!endpoint) {
+          throw new Error(`Invalid letter type: ${letter.type}`);
+        }
+
+        const response = await apiClient.get(endpoint, {
           responseType: 'blob',
           headers: {
             'Accept': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
           }
         });
 
-        // Create and trigger download
         const blob = new Blob([response.data], {
           type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
         });
@@ -663,7 +684,6 @@ export default {
         document.body.appendChild(link);
         link.click();
         
-        // Cleanup
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
 
