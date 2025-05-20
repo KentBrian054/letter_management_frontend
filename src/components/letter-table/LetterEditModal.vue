@@ -169,7 +169,11 @@
                         :class="{ 'border-red-500': errors.recipients }"
                       >
                         <option value="">Select Recipient</option>
-                        <option v-for="r in recipientsList" :key="r.id" :value="r.id">
+                        <option
+                          v-for="r in getAvailableRecipients(index)"
+                          :key="r.id"
+                          :value="r.id"
+                        >
                           {{ r.name }} - {{ r.position }}
                         </option>
                       </select>
@@ -850,9 +854,22 @@ export default {
     },  // <-- Add this comma
     clearError(field) {
       if (this.errors && this.errors[field]) {
-        delete this.errors[field] // Changed from this.$delete to standard delete
+        delete this.errors[field]
       }
-    }, // <-- Add this comma
+    },
+    
+    getAvailableRecipients(currentIndex) {
+      // Get all selected recipient IDs except the current one
+      const selectedIds = this.letter.recipients
+        .map((r, idx) => idx !== currentIndex ? r.id : null)
+        .filter(id => id);
+
+      // Always include the currently selected recipient for this dropdown
+      return this.recipientsList.filter(r =>
+        !selectedIds.includes(r.id) || r.id === this.letter.recipients[currentIndex].id
+      );
+    },
+    
     onContentInput() {
       this.clearError('content');
     },

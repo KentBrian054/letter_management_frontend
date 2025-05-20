@@ -169,7 +169,11 @@
                         :class="{ 'border-red-500': errors.recipients }"
                       >
                         <option value="">Select Recipient</option>
-                        <option v-for="r in recipientsList" :key="r.id" :value="r.id">
+                        <option
+                          v-for="r in getAvailableRecipients(index)"
+                          :key="r.id"
+                          :value="r.id"
+                        >
                           {{ r.name }} - {{ r.position }}
                         </option>
                       </select>
@@ -891,6 +895,17 @@ export default {
         'arial', 'calibri', 'cambria', 'times-new-roman', 'courier', 'georgia', 'garamond', 'tahoma', 'verdana', 'trebuchet', 'helvetica'
       ];
       Quill.register(Font, true);
+    },
+    getAvailableRecipients(currentIndex) {
+      // Get all selected recipient IDs except the current one
+      const selectedIds = this.letterForm.recipients
+        .map((r, idx) => idx !== currentIndex ? r.id : null)
+        .filter(id => id);
+
+      // Always include the currently selected recipient for this dropdown
+      return this.recipientsList.filter(r =>
+        !selectedIds.includes(r.id) || r.id === this.letterForm.recipients[currentIndex].id
+      );
     },
   },
   mounted() {
