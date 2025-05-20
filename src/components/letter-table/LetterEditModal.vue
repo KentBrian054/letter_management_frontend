@@ -387,6 +387,21 @@ export default defineComponent({
   emits: ['update:modelValue', 'refreshLetters', 'close', 'update:editMode'],
   
   data() {
+<<<<<<< HEAD
+=======
+    const defaultForm = {
+      title: '',
+      type: '',
+      subject: '',
+      date: new Date().toISOString().split('T')[0],
+      recipients: [{ id: '', name: '', position: '' }],
+      content: '',
+      sender_name: '',
+      sender_position: '',
+      pdfPreviewIndex: null // Add index tracking for PDF preview button
+    };
+
+>>>>>>> parent of 5a33d4d (adjust the designs)
     return {
       showConfirmModal: false,
       showSuccess: false,
@@ -400,11 +415,99 @@ export default defineComponent({
         theme: 'snow',
         modules: {
           toolbar: [
+<<<<<<< HEAD
             ['bold', 'italic', 'underline'],
             [{ 'list': 'ordered'}, { 'list': 'bullet' }],
             ['clean']
           ]
         }
+=======
+            ['bold', 'italic', 'underline', 'strike'],
+            ['blockquote', 'code-block'],
+            [{ 'header': 1 }, { 'header': 2 }],
+            [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+            [{ 'script': 'sub' }, { 'script': 'super' }],
+            [{ 'indent': '-1' }, { 'indent': '+1' }],
+            [{ 'direction': 'rtl' }],
+            [{ 'size': ['small', false, 'large', 'huge'] }],
+            [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+            [{ 'color': [] }, { 'background': [] }],
+            [{ 'font': [] }],
+            [{ 'align': [] }],
+            ['clean']
+          ]
+        },
+        placeholder: 'Compose your letter...',
+        theme: 'snow'
+      },
+      letterForm: this.letter ? {
+        title: this.letter.title || '',
+        type: this.letter.type || '',
+        subject: this.letter.subject || '',
+        date: this.letter.date ? this.formatDateForInput(this.letter.date) : defaultForm.date,
+        recipients: this.letter.recipients ? 
+          (Array.isArray(this.letter.recipients) ? 
+            this.letter.recipients.map(r => ({
+              id: r.id || r || '',
+              name: r.name || '',
+              position: r.position || ''
+            })) : 
+            [{ 
+              id: this.letter.recipients?.id || this.letter.recipients || '',
+              name: this.letter.recipients?.name || '',
+              position: this.letter.recipients?.position || ''
+            }]
+          ) : defaultForm.recipients,
+        content: this.letter.content || '',
+        sender_name: this.letter.sender_name || '',
+        sender_position: this.letter.sender_position || ''
+      } : { ...defaultForm },
+      errors: {},
+      showConfirmModal: false,
+      showTemplateModal: false,  // Add this line
+      showSuccess: false,  // Keep this for controlling visibility
+      recipientsList: [],
+      isSubmitting: false,
+      // Add these lines:
+      templates: [], // List of templates (should be fetched from API if needed)
+      selectedTemplate: '', // Currently selected template ID
+      isTemplateLoading: false, // <-- Add this line
+    }
+  },
+  computed: {
+    filteredRecipientsList() {
+      // Get all currently selected recipient IDs
+      const selectedIds = this.letterForm.recipients
+        .filter(r => r.id)
+        .map(r => r.id);
+      
+      // Filter out recipients that are already selected
+      return this.recipientsList.filter(recipient => 
+        !selectedIds.includes(recipient.id)
+      );
+    }
+  },
+  async created() {
+    try {
+      await this.fetchCSRFToken();
+      await this.fetchRecipients();
+      
+      const templatesResponse = await apiClient.get('/templates');
+      this.templates = templatesResponse.data.data || templatesResponse.data;
+
+      if (this.letter && Object.keys(this.letter).length > 0) {
+        this.$emit('update:editMode', true);
+        
+        // Initialize localLetter with prop data
+        this.localLetter = {
+          ...this.letter,
+          date: this.formatDateForInput(this.letter.date || new Date()),
+          type: typeMap[this.letter.type] || this.letter.type || ''
+        };
+      } else {
+        // Initialize with default values
+        this.localLetter.date = this.formatDateForInput(new Date());
+>>>>>>> parent of 5a33d4d (adjust the designs)
       }
     }
   },

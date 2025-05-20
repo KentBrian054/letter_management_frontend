@@ -35,11 +35,19 @@
     <PreviewOptionsModal
       v-if="showPreviewModal"
       :letter="letter"
+<<<<<<< HEAD
       @preview-pdf="handlePreviewPDF"
       @export-word="handleExportWord"
+=======
+      @preview="handlePreviewPDF"
+      @convert-pdf-to-word="handleExportWord"
+>>>>>>> parent of 5a33d4d (adjust the designs)
       @close="showPreviewModal = false"
     />
+    
+    <!-- Remove the SuccessMessageModal component from here -->
 
+<<<<<<< HEAD
     <!-- Delete Button -->
     <ActionButton 
       variant="delete"
@@ -52,6 +60,33 @@
         <path d="M74.45 160a8 8 0 0 0-8 8.83l26.31 252.56a1.5 1.5 0 0 0 0 .22A48 48 0 0 0 140.45 464h231.09a48 48 0 0 0 47.67-42.39v-.21l26.27-252.57a8 8 0 0 0-8-8.83zm248.86 180.69a16 16 0 1 1-22.63 22.62L256 318.63l-44.69 44.68a16 16 0 0 1-22.63-22.62L233.37 296l-44.69-44.69a16 16 0 0 1 22.63-22.62L256 273.37l44.68-44.68a16 16 0 0 1 22.63 22.62L278.62 296z" fill="currentColor"></path>
       </svg>
     </ActionButton>
+=======
+    <!-- Error Message Modal -->
+    <div v-if="showErrorMessage" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+      <div class="bg-white p-6 rounded-lg shadow-xl max-w-md">
+        <div class="flex items-center text-red-600 mb-4">
+          <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <h3 class="text-lg font-medium">Conversion Failed</h3>
+        </div>
+        <p class="text-gray-600 mb-4">{{ errorMessage }}</p>
+        <div class="flex justify-end">
+          <button @click="showErrorMessage = false" class="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading modal -->
+    <div v-if="isConverting" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+      <div class="bg-white p-6 rounded-lg flex items-center gap-3">
+        <component is="ArrowPathIcon" class="w-5 h-5 animate-spin" />
+        <span>Exporting to Word...</span>
+      </div>
+    </div>
+>>>>>>> parent of 5a33d4d (adjust the designs)
   </div>
 </template>
 

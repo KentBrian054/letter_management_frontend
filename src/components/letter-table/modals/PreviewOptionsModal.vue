@@ -3,6 +3,7 @@
     <div class="bg-white rounded-lg p-6 w-96 shadow-lg">
       <h2 class="text-xl font-semibold mb-4">Document Options</h2>
       
+<<<<<<< HEAD
 <<<<<<< HE
       <!-- Preview Button -->
       <button
@@ -44,6 +45,8 @@
         Close
       </button>
 =======
+=======
+>>>>>>> parent of 5a33d4d (adjust the designs)
       <div class="space-y-4">
         <button 
           @click="handlePreview"
@@ -89,11 +92,15 @@
           Close
         </button>
       </div>
+<<<<<<< HEAD
+>>>>>>> parent of 5a33d4d (adjust the designs)
+=======
 >>>>>>> parent of 5a33d4d (adjust the designs)
     </div>
   </div>
 </template>
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 <script>
 import { EyeIcon, DocumentIcon } from '@heroicons/vue/24/solid'
@@ -126,6 +133,11 @@ export default {
 <script setup lang="ts">
 import { ref } from 'vue';
 
+=======
+<script setup lang="ts">
+import { ref } from 'vue';
+
+>>>>>>> parent of 5a33d4d (adjust the designs)
 const isLoadingPDF = ref(false);
 const isConverting = ref(false);
 
@@ -168,6 +180,9 @@ const handleExportWord = async () => {
     isConverting.value = false;
   }
 };
+<<<<<<< HEAD
+>>>>>>> parent of 5a33d4d (adjust the designs)
+=======
 >>>>>>> parent of 5a33d4d (adjust the designs)
 </script>
 
