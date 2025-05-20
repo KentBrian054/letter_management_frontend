@@ -163,6 +163,7 @@
                   <!-- Change letter.recipients to localLetter.recipients -->
                   <div v-for="(recipient, index) in localLetter.recipients" :key="index" class="flex items-center gap-4 ml-24">
                     <div class="flex-1">
+
                       <div class="relative flex items-center">
                         <select
                           v-model="recipient.id"
@@ -179,17 +180,10 @@
                             {{ r.name }} - {{ r.position }}
                           </option>
                         </select>
-                        <button
-                          v-if="localLetter.recipients.length > 1"
-                          @click="removeRecipient(index)"
-                          type="button"
-                          class="absolute right-[-40px] p-1.5 text-red-500 hover:text-white hover:bg-red-500 rounded-full transition-all duration-200"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-5 h-5">
-                            <path d="M6 21h12V7H6v14zm2.46-9.12l1.41-1.41L12 12.59l2.12-2.12l1.41 1.41L13.41 14l2.12 2.12l-1.41 1.41L12 15.41l-2.12 2.12l-1.41-1.41L10.59 14l-2.13-2.12zM15.5 4l-1-1h-5l-1 1H5v2h14V4h-3.5z" fill="currentColor"/>
-                          </svg>
-                        </button>
                       </div>
+
+                      <!-- Remove this duplicate select element -->
+                      <!-- Remove the merge conflict marker >>>>>>> parent of 2dd0a0e -->
                       <div v-if="recipient.name && recipient.position" class="mt-1 text-sm text-gray-600 flex items-center gap-2">
                         <span
                           class="cursor-pointer text-blue-600 underline"
@@ -436,28 +430,20 @@ export default {
     updateParent() {
       this.$emit('update:letter', this.localLetter)
     },
-    
     clearError(field) {
-      if (this.errors[field]) {
-        this.errors[field] = ''
+      if (this.errors && this.errors[field]) {
+        delete this.errors[field]; // Changed from this.$delete to standard delete
       }
     },
-    // ... rest of your methods
-  },
-
-  computed: {
-    safeLetter() {
-      // Always return a letter object with all expected fields
-      return {
-        title: '',
-        subject: '',
-        type: '',
-        date: new Date().toISOString().split('T')[0],
-        content: '',
-        sender_name: '',
-        sender_position: '',
-        recipients: [],
-        ...this.letter
+    onContentInput() {
+      this.clearError('content');
+    },
+    async handleTemplateChange(eventOrId) {
+      let templateId;
+      if (eventOrId && eventOrId.target) {
+        templateId = eventOrId.target.value;
+      } else {
+        templateId = eventOrId;
       }
     }
   },
