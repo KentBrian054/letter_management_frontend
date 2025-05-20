@@ -115,6 +115,7 @@
                   </div>
                   <div v-for="(recipient, index) in letter.recipients" :key="index" class="flex items-center gap-4 ml-24">
                     <div class="flex-1">
+<<<<<<< HEAD
                       <div class="relative flex items-center">
                         <!-- Update recipients dropdown to show selected recipients -->
                         <select
@@ -144,6 +145,19 @@
                           </svg>
                         </button>
                       </div>
+=======
+                      <select
+                        v-model="recipient.id"
+                        @change="updateRecipient(index, $event.target.value)"
+                        class="w-[500px] border rounded-md px-4 py-2 appearance-none bg-white pr-10"
+                        :class="{ 'border-red-500': errors.recipients }"
+                      >
+                        <option value="">Select Recipient</option>
+                        <option v-for="r in recipientsList" :key="r.id" :value="r.id">
+                          {{ r.name }} - {{ r.position }}
+                        </option>
+                      </select>
+>>>>>>> parent of 2dd0a0e (debug the select recipient dropdown)
                       <div v-if="recipient.name && recipient.position" class="mt-1 text-sm text-gray-600 flex items-center gap-2">
                         <span
                           class="cursor-pointer text-blue-600 underline"
@@ -404,10 +418,17 @@ export default defineComponent({
   },
   methods: {
     clearError(field) {
+<<<<<<< HEAD
       if (this.errors?.[field]) {
         delete this.errors[field]
       }
     },
+=======
+      if (this.errors && this.errors[field]) {
+        delete this.errors[field] // Changed from this.$delete to standard delete
+      }
+    }, // <-- Add this comma
+>>>>>>> parent of 2dd0a0e (debug the select recipient dropdown)
     onContentInput() {
       this.clearError('content');
     },

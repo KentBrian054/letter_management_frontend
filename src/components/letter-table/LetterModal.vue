@@ -160,6 +160,7 @@
                   <!-- Recipient rows -->
                   <div v-for="(recipient, index) in letterForm.recipients" :key="index" class="flex items-center gap-4 ml-24">
                     <div class="flex-1">
+<<<<<<< HEAD
                       <div class="relative flex items-center">
                         <select
                           v-model="recipient.id"
@@ -187,6 +188,19 @@
                           </svg>
                         </button>
                       </div>
+=======
+                      <select
+                        v-model="recipient.id"
+                        @change="updateRecipient(index, $event.target.value)"
+                        class="w-[500px] border rounded-md px-4 py-2 appearance-none bg-white pr-10"
+                        :class="{ 'border-red-500': errors.recipients }"
+                      >
+                        <option value="">Select Recipient</option>
+                        <option v-for="r in recipientsList" :key="r.id" :value="r.id">
+                          {{ r.name }} - {{ r.position }}
+                        </option>
+                      </select>
+>>>>>>> parent of 2dd0a0e (debug the select recipient dropdown)
                       <div v-if="recipient.name && recipient.position" class="mt-1 text-sm text-gray-600 flex items-center gap-2">
                         <span
                           class="cursor-pointer text-blue-600 underline"
@@ -889,6 +903,7 @@ export default {
     showPdfPreviewButton(index) {
       this.pdfPreviewIndex = index;
     },
+<<<<<<< HEAD
     previewRecipientPdf(recipient) {
       // Placeholder: Replace with your actual PDF preview logic
     }
@@ -900,6 +915,19 @@ export default {
         this.handleTemplateChange(newVal);
       }
     }
+=======
+    initQuill() {
+      // Whitelist the fonts for Quill
+      const Font = Quill.import('formats/font');
+      Font.whitelist = [
+        'arial', 'calibri', 'cambria', 'times-new-roman', 'courier', 'georgia', 'garamond', 'tahoma', 'verdana', 'trebuchet', 'helvetica'
+      ];
+      Quill.register(Font, true);
+    },
+  },
+  mounted() {
+    this.initQuill();
+>>>>>>> parent of 2dd0a0e (debug the select recipient dropdown)
   }
 } // End of component export default
 
