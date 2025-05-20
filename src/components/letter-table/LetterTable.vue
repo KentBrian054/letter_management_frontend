@@ -205,6 +205,7 @@
 }
 </style>
 
+
 <script>
 // Remove the axios configuration from here and keep only the import
 import axios from 'axios';
@@ -217,8 +218,6 @@ import LetterEditModal from './LetterEditModal.vue';
 import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import PreviewOptionsModal from './modals/PreviewOptionsModal.vue';
-import Quill from 'quill'
-import Tooltip from 'quill/ui/tooltip'
 
 export default {
   components: {
@@ -236,11 +235,11 @@ export default {
       isExporting: false,
       showPreviewModal: false,
       letters: [],
-      recipients: [], // Add this line if not already present
+      recipients: [],
       showModal: false,
       showLetterForm: false,
       showEditModal: false,
-      showConfirmDialog: false,  // Add this line if not present
+      showConfirmDialog: false,
       showDeleteConfirmModal: false,
       showDeleteSuccess: false,
       confirmDeleteId: null,
@@ -253,12 +252,11 @@ export default {
         start: '',
         end: ''
       },
-      selectedType: '', // Add this line
+      selectedType: '',
       searchSubject: '',
       searchRecipient: '',
-      isFetching: false,       // Moved inside data()
-      lastRequestTime: 0,      // Moved inside data()
-      // Remove these properties as they're no longer needed
+      isFetching: false,
+      lastRequestTime: 0,
       dropdownStates: {},
       showPdfPreview: false,
       currentPdfUrl: null,
@@ -339,6 +337,8 @@ export default {
   mounted() {
     this.initializeData();
   },
+
+  
   methods: {
     async initializeData() {
       try {
@@ -541,49 +541,41 @@ export default {
         this.confirmDeleteId = null;
       }
     },
+
+    // Add the missing methods inside the methods object
+    async handlePreviewPDF() {
+      this.isPreviewLoading = true;
+      try {
+        await this.previewPDF(this.selectedLetter);
+      } finally {
+        this.isPreviewLoading = false;
+        this.showPreviewModal = false;
+      }
+    },
+
+    async handleExportWord() {
+      this.isExporting = true;
+      try {
+        await this.convertPDFToWord(this.selectedLetter);
+      } finally {
+        this.isExporting = false;
+        this.showPreviewModal = false;
+      }
+    },
+
+    closePreviewModal() {
+      this.showPreviewModal = false;
+      this.isPreviewLoading = false;
+      this.isExporting = false;
+    },
+
+    previewPDF(letter) {
+      this.selectedLetter = letter;
+      this.showPreviewModal = true;
+    }
   }
 } // End of export default
-
-// Remove these lines ▼
-// <ConfirmationDialog
-//   v-model="showConfirmDialog"
-//   title="Delete Letter"
-//   message="Are you sure you want to delete this letter? This action cannot be undone."
-//   @confirm="deleteLetter(confirmDeleteId)"
-// />
-
-async handlePreviewPDF() {
-  this.isPreviewLoading = true;
-  try {
-    await this.previewPDF(this.selectedLetter);
-  } finally {
-    this.isPreviewLoading = false;
-    this.showPreviewModal = false;
-  }
-},
-
-async handleExportWord() {
-  this.isExporting = true;
-  try {
-    await this.convertPDFToWord(this.selectedLetter);
-  } finally {
-    this.isExporting = false;
-    this.showPreviewModal = false;
-  }
-},
-
-closePreviewModal() {
-  this.showPreviewModal = false;
-  this.isPreviewLoading = false;
-  this.isExporting = false;
-},
-
-// Update the existing previewPDF method to show modal
-previewPDF(letter) {
-  this.selectedLetter = letter;
-  this.showPreviewModal = true;
-},
-}
+</script>
 
 
 

@@ -1,9 +1,10 @@
 
 <template>
   <transition name="fade">
-    <div v-if="modelValue" class="fixed inset-0 z-50 overflow-hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div v-if="modelValue" class="fixed inset-0 z-50 overflow-hidden">
       <div class="fixed inset-0 bg-gray-500/75 backdrop-blur-sm transition-opacity"></div>
       <div class="flex items-center justify-center min-h-screen p-4">
+        <!-- Main modal container -->
         <div class="relative bg-white rounded-xl shadow-2xl w-[90%] h-[90vh] max-w-[1300px] overflow-hidden">
           <!-- Header with gradient -->
           <div class="absolute top-0 left-0 right-0 bg-gradient-to-r from-blue-600 to-blue-800 px-6 py-4 border-b z-10">
@@ -16,7 +17,7 @@
                 <div class="flex flex-col w-[350px] bg-white rounded-lg shadow-sm">
                   <!-- Replace letter.title with localLetter.title -->
                   <input
-                    v-model="localLetter.title"
+                    v-model="letter.title"
                     :class="{'border-red-500': errors.title}"
                     type="text"
                     required
@@ -66,6 +67,7 @@
               </div>
             </div>
           </div>
+        </div>
 
           <!-- Content with updated styling -->
           <div class="h-full overflow-y-auto pt-20 px-8 pb-8 bg-gray-50">
@@ -145,7 +147,7 @@
                 </div>
 
                 <!-- Recipients Section -->
-                <div class="space-y-4">
+                <div class="space-y-4"></div>
                   <div class="flex items-center gap-4">
                     <label class="font-medium w-24 text-lg">FOR:</label>
                     <button
@@ -202,8 +204,7 @@
                       </div>
                     </div>
                   </div>
-                  <ValidationWarning v-if="errors.recipients" :message="errors.recipients" />
-                </div>
+                  
 
                 <!-- Subject field -->
                 <div class="flex items-center gap-4">
@@ -298,8 +299,7 @@
             </div>
           </div>
         </div>
-        </div> <!-- End .bg-white rounded-xl ... -->
-      </div> <!-- End .flex.items-center.justify-center.min-h-screen.p-4 -->
+      </div> <!-- Add this closing div -->
   </transition>
 
   <!-- Success Message Modal -->
@@ -318,7 +318,7 @@
   />
 
   <!-- Save as Template Modal -->
-  <div v-if="showTemplateModal" class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+  <div v-if="showTemplateModal" class="fixed inset-0 z-50 overflow-y-auto">
     <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
       <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
       <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
@@ -361,41 +361,57 @@
 </template>
 
 <script>
+import { defineComponent } from 'vue'
 import ConfirmationModal from './modals/ConfirmationModal.vue'
 import SuccessMessageModal from './modals/SuccessMessageModal.vue'
 import ValidationWarning from '@/components/common/ValidationWarning.vue'
+import { QuillEditor } from '@vueup/vue-quill'
+import '@vueup/vue-quill/dist/vue-quill.snow.css'
 
-export default {
+export default defineComponent({
+  name: 'LetterEditModal',
   components: {
     ConfirmationModal,
     SuccessMessageModal,
-    ValidationWarning
+    ValidationWarning,
+    QuillEditor
   },
   props: {
-    modelValue: {
-      type: Boolean,
-      default: false
-    },
+    modelValue: Boolean,
     letter: {
       type: Object,
-      default: () => ({})
+      required: true
     },
-    editMode: {
-      type: Boolean,
-      default: false
-    }
+    editMode: Boolean
   },
-  emits: [
-    'update:modelValue',
-    'refreshLetters',
-    'close',
-    'update:editMode'
-  ],
+  emits: ['update:modelValue', 'refreshLetters', 'close', 'update:editMode'],
+  
   data() {
     return {
       showConfirmModal: false,
-      showSuccessMessage: false,
-      localLetter: {
+      showSuccess: false,
+      successMessage: 'Updated successfully!',
+      localLetter: this.initializeLocalLetter(),
+      errors: {},
+      isSubmitting: false,
+      templateName: '',
+      showTemplateModal: false,
+      editorOptions: {
+        theme: 'snow',
+        modules: {
+          toolbar: [
+            ['bold', 'italic', 'underline'],
+            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+            ['clean']
+          ]
+        }
+      }
+    }
+  },
+
+  methods: {
+    initializeLocalLetter() {
+      return {
         title: '',
         subject: '',
         type: '',
@@ -404,37 +420,15 @@ export default {
         sender_name: '',
         sender_position: '',
         recipients: []
-      },
-      editMode: false,
-      // ... rest of your data properties
-    }
-  },
-
-  created() {
-    // Initialize localLetter with props data if available
-    if (this.letter) {
-      this.localLetter = {
-        ...this.letter,
-        date: this.letter.date || new Date().toISOString().split('T')[0],
-        recipients: this.letter.recipients || []
       }
-    }
-  },
-
-  methods: {
-    resetSelection() {
-      this.selectedTemplate = '';
-      this.templateName = '';
     },
-    // Add method to sync changes back to parent
-    updateParent() {
-      this.$emit('update:letter', this.localLetter)
-    },
+    
     clearError(field) {
-      if (this.errors && this.errors[field]) {
-        delete this.errors[field]; // Changed from this.$delete to standard delete
+      if (this.errors?.[field]) {
+        delete this.errors[field]
       }
     },
+
     onContentInput() {
       this.clearError('content');
     },
@@ -446,8 +440,8 @@ export default {
         templateId = eventOrId;
       }
     }
-  },
-}
+  }
+})
 </script>
 
 <style>

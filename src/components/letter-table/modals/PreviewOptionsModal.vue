@@ -3,7 +3,7 @@
     <div class="bg-white rounded-lg p-6 w-96 shadow-lg">
       <h2 class="text-xl font-semibold mb-4">Document Options</h2>
       
-<<<<<<< HEAD
+<<<<<<< HE
       <!-- Preview Button -->
       <button
         @click="$emit('preview-pdf')"
