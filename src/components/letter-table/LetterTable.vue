@@ -519,6 +519,27 @@ export default {
       }
     },
 
+    // Add the fetchRecipients method
+    async fetchRecipients() {
+      try {
+        const response = await apiClient.get('/api/recipients');
+        if (response.data) {
+          if (Array.isArray(response.data)) {
+            this.recipients = response.data;
+          } else if (Array.isArray(response.data.data)) {
+            this.recipients = response.data.data;
+          } else {
+            this.recipients = [];
+          }
+        } else {
+          this.recipients = [];
+        }
+      } catch (error) {
+        console.error('Error fetching recipients:', error);
+        this.recipients = [];
+      }
+    },
+
     // Keep only one deleteLetter
     confirmDelete(id) {
       this.confirmDeleteId = id;

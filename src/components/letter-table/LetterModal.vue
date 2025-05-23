@@ -836,35 +836,17 @@ export default {
             return;
         }
     
-        // Validate required fields including title
-        if (!this.letterForm.title) {
-            this.errors.title = 'Title is required';
-            return;
-        }
-    
-        // Validate recipients exists and has at least one valid recipient
-        if (!this.letterForm.recipients || this.letterForm.recipients.length === 0 || 
-            !this.letterForm.recipients[0] || !this.letterForm.recipients[0].id) {
-            this.errors.recipients = 'At least one valid recipient is required';
-            return;
-        }
-    
-        if (!this.letterForm.date) {
-            this.errors.date = 'The date field is required';
-            return;
-        }
-    
         try {
             this.isSubmitting = true;
             const payload = {
                 name: this.templateName,
-                title: this.letterForm.title,  // Make sure title is included
+                title: this.letterForm.title || '',  // Ensure title is included
                 type: this.letterForm.type,
                 subject: this.letterForm.subject,
                 content: this.letterForm.content,
                 sender_name: this.letterForm.sender_name,
                 sender_position: this.letterForm.sender_position,
-                date: this.letterForm.date,    // Add date
+                date: this.letterForm.date,
                 recipients: this.letterForm.recipients.map(recipient => ({
                     id: recipient.id,
                     name: recipient.name,

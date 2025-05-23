@@ -73,9 +73,12 @@
     />
 
     <!-- Add PreviewOptionsModal -->
+    <!-- Update the PreviewOptionsModal usage -->
     <PreviewOptionsModal
       v-if="showPreviewModal"
       :letter="letter"
+      :isPreviewLoading="isLoadingPDF"
+      :isExporting="isConverting"
       @preview-pdf="handlePreviewPDF"
       @export-word="handleExportWord"
       @close="showPreviewModal = false"
@@ -182,21 +185,9 @@ export default {
       }
     },
 
-    async handleExportWord() {
-      try {
-        this.isConverting = true;
-        this.showPreviewModal = false;
-        await this.$emit('convert-pdf-to-word', this.letter);
-      } catch (error) {
-        console.error('Export error:', error);
-        this.showErrorMessage = true;
-        this.errorMessage = 'Failed to export to Word. Please try again.';
-      } finally {
-        this.isConverting = false;
-      }
-    },
     async handlePreviewPDF() {
       try {
+        this.isLoadingPDF = true; // Set loading state
         if (!this.letter?.id) {
           throw new Error('No letter selected');
         }
@@ -221,7 +212,7 @@ export default {
           headers: {
             'Accept': 'application/pdf'
           },
-          baseURL: 'http://192.168.5.94:8000'
+          baseURL: 'http://192.168.100.13:8000'
         });
 
         if (response.status !== 200 || !response.headers['content-type'].includes('application/pdf')) {
@@ -235,6 +226,21 @@ export default {
         console.error('PDF preview error:', error);
         this.errorMessage = error.message || 'Failed to generate PDF preview. Please try again.';
         this.showErrorMessage = true;
+      } finally {
+        this.isLoadingPDF = false; // Reset loading state
+      }
+    },
+    async handleExportWord() {
+      try {
+        this.isConverting = true; // Set loading state
+        this.showPreviewModal = false;
+        await this.$emit('convert-pdf-to-word', this.letter);
+      } catch (error) {
+        console.error('Export error:', error);
+        this.showErrorMessage = true;
+        this.errorMessage = 'Failed to export to Word. Please try again.';
+      } finally {
+        this.isConverting = false; // Reset loading state
       }
     },
     handleEdit() {
