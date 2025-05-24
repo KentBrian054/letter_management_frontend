@@ -319,12 +319,12 @@
       </div> <!-- End .flex.items-center.justify-center.min-h-screen.p-4 -->
   </transition>
 
-  <!-- Success Message Modal -->
-  <SuccessMessageModal 
+  <!-- Remove this entire block -->
+  <!-- <SuccessMessageModal 
     v-if="showSuccess"
     message="Letter saved successfully!"
     @close="closeModal"
-  />
+  /> -->
 
   <!-- Confirmation Modal -->
   <div v-if="showConfirmModal" class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
@@ -422,7 +422,8 @@ export default {
   name: 'LetterEditModal',
   components: {
     QuillEditor,
-    SuccessMessageModal,
+    // Remove this line
+    // SuccessMessageModal,
     ValidationWarning // Register the component
   },
   props: {
@@ -453,7 +454,10 @@ export default {
       sender_name: '',
       sender_position: ''
     };
-
+  
+    // Create a local copy of the letter prop for editing
+    const localLetter = { ...defaultForm, ...this.letter };
+  
     return {
       editorOptions: {
         modules: {
@@ -509,19 +513,14 @@ export default {
       templates: [], // List of templates (should be fetched from API if needed)
       selectedTemplate: '', // Currently selected template ID
       isTemplateLoading: false, // <-- Add this line
+      pdfPreviewIndex: null, // Add this line
+      isTemplateLoading: false,
     }
   },
   computed: {
     filteredRecipientsList() {
-      // Get all currently selected recipient IDs
-      const selectedIds = this.letterForm.recipients
-        .filter(r => r.id)
-        .map(r => r.id);
-      
-      // Filter out recipients that are already selected
-      return this.recipientsList.filter(recipient => 
-        !selectedIds.includes(recipient.id)
-      );
+      const selectedIds = this.letterForm.recipients.map(r => r.id).filter(id => id);
+      return this.recipientsList.filter(recipient => !selectedIds.includes(recipient.id));
     }
   },
   async created() {
@@ -535,10 +534,10 @@ export default {
       if (this.letter && Object.keys(this.letter).length > 0) {
         this.$emit('update:editMode', true);
         
-        // Update the letter initialization
-        this.letter = {
+        // Update the letter data directly without using $set
+        Object.assign(this.letter, {
           ...this.letter,
-          type: this.letter.type || '',  // Ensure type is properly initialized
+          type: this.letter.type || '',
           recipients: Array.isArray(this.letter.recipients) 
             ? this.letter.recipients.map(r => ({
                 id: r.id || r || '',
@@ -550,12 +549,7 @@ export default {
                 name: this.letter.recipients?.name || '',
                 position: this.letter.recipients?.position || ''
               }]
-        };
-      }
-      
-      // Add this to ensure letter.type is properly initialized
-      if (this.letter && !this.letter.type) {
-        this.$set(this.letter, 'type', '');
+        });
       }
     } catch (error) {
       console.error('Component initialization error:', error);
@@ -654,15 +648,21 @@ export default {
       this.$emit('close');
     },
     addRecipient() {
-      this.letterForm.recipients.push({ 
+      // Ensure letter.recipients is an array
+      if (!Array.isArray(this.letter.recipients)) {
+        this.letter.recipients = [];
+      }
+      // Add a new recipient object to the array
+      this.letter.recipients.push({ 
         id: '', 
         name: '', 
         position: '' 
       });
     },
+
     removeRecipient(index) {
-      if (this.letterForm.recipients.length > 1) {
-        this.letterForm.recipients.splice(index, 1);
+      if (this.letter.recipients.length > 1) {
+        this.letter.recipients.splice(index, 1);
       }
     },
     async fetchRecipients() {
@@ -687,22 +687,31 @@ export default {
       }
     },
 
-    // Update updateRecipient method to handle null cases
     updateRecipient(index, recipientId) {
       if (!recipientId) return;
-      
+    
+      // Check if recipient is already selected in another index
+      const isDuplicate = this.letterForm.recipients.some((recipient, idx) => 
+        idx !== index && recipient.id === (typeof recipientId === 'string' ? parseInt(recipientId) : recipientId)
+      );
+    
+      if (isDuplicate) {
+        this.errors.recipients = 'This recipient is already selected';
+        return;
+      }
+    
       const selectedRecipient = this.recipientsList.find(r => 
         r.id === (typeof recipientId === 'string' ? parseInt(recipientId) : recipientId)
       );
-      
+    
       if (selectedRecipient) {
         this.letterForm.recipients[index] = {
           id: selectedRecipient.id,
           name: selectedRecipient.name || '',
           position: selectedRecipient.position || ''
         };
+        this.clearError('recipients');
       }
-      this.clearError('recipients');
     },  // Add comma here
     handleBack() {
       // Reset form and close modal
@@ -783,7 +792,6 @@ export default {
       try {
         this.isSubmitting = true;
         
-        // Map the type values to match backend expectations
         const typeMapping = {
           'memo': 'Memo',
           'endorsement': 'Endorsement',
@@ -809,13 +817,12 @@ export default {
         const response = await apiClient.put(endpoint, payload);
         
         this.showConfirmModal = false;
-        this.showSuccess = true;
+        // Remove these lines
+        // this.showSuccess = true;
         
-        setTimeout(() => {
-          this.closeModal();
-          this.$emit('refresh-letters');
-        }, 1200);
-
+        // Directly close modal and refresh
+        this.closeModal();
+        this.$emit('refresh-letters');
         this.$emit('update-letter', response.data);
       } catch (error) {
         console.error('Error updating letter:', error);
@@ -826,25 +833,31 @@ export default {
     },
 
     async handleQuickSave() {
-      if (this.isSubmitting) return;
-      
-      // Validate required fields before showing template modal
-      const requiredFields = ['title', 'type', 'subject', 'content', 'sender_name', 'sender_position', 'date'];
-      const errors = {};
-      
-      requiredFields.forEach(field => {
-        if (!this.letterForm[field]) {
-          errors[field] = `The ${field.replace('_', ' ')} field is required.`;
+        if (this.isSubmitting) return;
+        
+        // Validate required fields before showing template modal
+        const requiredFields = ['title', 'type', 'subject', 'content', 'sender_name', 'sender_position', 'date'];
+        const errors = {};
+        
+        requiredFields.forEach(field => {
+            // Change from letterForm to letter
+            if (!this.letter[field]) {
+                errors[field] = `The ${field.replace('_', ' ')} field is required.`;
+            }
+        });
+    
+        // Validate recipients
+        if (!this.letter.recipients || !this.letter.recipients.some(r => r.id)) {
+            errors.recipients = 'At least one recipient is required';
         }
-      });
     
-      if (Object.keys(errors).length > 0) {
-        this.errors = errors;
-        return;
-      }
+        if (Object.keys(errors).length > 0) {
+            this.errors = errors;
+            return;
+        }
     
-      // Show template name input modal if validation passes
-      this.showTemplateModal = true;
+        // Show template name input modal if validation passes
+        this.showTemplateModal = true;
     },
     
     async confirmQuickSave() {
@@ -853,43 +866,29 @@ export default {
             return;
         }
     
-        // Validate required fields including title
-        if (!this.letterForm.title) {
-            this.errors.title = 'Title is required';
-            return;
-        }
-    
-        // Validate recipients exists and has at least one valid recipient
-        if (!this.letterForm.recipients || this.letterForm.recipients.length === 0 || 
-            !this.letterForm.recipients[0] || !this.letterForm.recipients[0].id) {
-            this.errors.recipients = 'At least one valid recipient is required';
-            return;
-        }
-    
-        if (!this.letterForm.date) {
-            this.errors.date = 'The date field is required';
-            return;
-        }
-    
         try {
             this.isSubmitting = true;
             const payload = {
                 name: this.templateName,
-                title: this.letter.title || '',  // Ensure title is included
+                title: this.letter.title,
                 type: this.letter.type,
                 subject: this.letter.subject,
                 content: this.letter.content,
                 sender_name: this.letter.sender_name,
                 sender_position: this.letter.sender_position,
-                date: this.letter.date,    // Add date
-                recipients: this.letter.recipients.map(recipient => ({
-                    id: recipient.id,
-                    name: recipient.name,
-                    position: recipient.position
-                }))
+                date: this.letter.date,
+                recipients: this.letter.recipients
+                    .filter(r => r && r.id)
+                    .map(recipient => ({
+                        id: recipient.id,
+                        name: recipient.name,
+                        position: recipient.position
+                    }))
             };
     
             await apiClient.post('/templates', payload);
+            await this.fetchTemplates();
+            
             this.showTemplateModal = false;
             this.showSuccess = true;
             setTimeout(() => {
@@ -900,7 +899,7 @@ export default {
             if (error.response?.data?.errors) {
                 this.errors = error.response.data.errors;
             } else {
-                this.errors.submit = 'Failed to save template. Please try again.';
+                this.errors.submit = error.response?.data?.error || 'Failed to save template. Please try again.';
             }
         } finally {
             this.isSubmitting = false;
@@ -920,7 +919,9 @@ export default {
     },
 
     previewRecipientPdf(recipient) {
-      // Placeholder: Replace with your actual PDF preview logic
+      // Reset preview index after showing preview
+      this.pdfPreviewIndex = null;
+      // Implement your PDF preview logic here
     },
     
     initQuill() {
@@ -955,13 +956,13 @@ export default {
             this.handleTemplateChange(newVal);
         }
     },
-    templates: {
-        handler(newTemplates) {
-            if (newTemplates && newTemplates.length > 0) {
-                // No need to fetch templates here since we already have them
+    modelValue: {
+        immediate: true,
+        async handler(newVal) {
+            if (newVal) {
+                await this.fetchTemplates();
             }
-        },
-        immediate: true
+        }
     }
 },
 
