@@ -197,8 +197,8 @@ export default function useLetterModal(props, emit) {
       const payload = {
         ...letterForm,
         recipients: letterForm.recipients
-          .map(r => parseInt(r.id, 10))
-          .filter(id => !isNaN(id))
+          .filter(r => r && r.id)  // Ensure recipients have an ID
+          .map(r => parseInt(r.id, 10))  // Map to include only the ID as an integer
       };
       
       const endpoint = props.editMode ? `/letters/${props.letter.id}` : '/letters';
@@ -330,6 +330,62 @@ export default function useLetterModal(props, emit) {
     return recipientsList.value.filter(r => !selectedIds.includes(r.id));
   };
 
+  // Define clearErrors function
+  const clearErrors = () => {
+    Object.keys(errors).forEach(key => delete errors[key]);
+  };
+
+  const handleTemplateChange = async (event) => {
+    const templateId = event?.target?.value; // Ensure event and target are defined
+    if (!templateId) return;
+  
+    try {
+      console.log('Fetching template with ID:', templateId);
+      isTemplateLoading.value = true;
+      const response = await apiClient.get(`/templates/${templateId}`);
+  
+      if (!response.data || !response.data.data) {
+        throw new Error('Template not found');
+      }
+  
+      const template = response.data.data || response.data;
+  
+      const normalizedType = template.type?.toLowerCase() || '';
+  
+      const updatedData = {
+        title: template.title || '',
+        type: normalizedType === 'invitation meeting' ? 'Invitation Meeting' : 
+              normalizedType === 'letter to admin' ? 'Letter to Admin' : 
+              template.type || '',
+        subject: template.subject || '',
+        content: template.content || '',
+        sender_name: template.sender_name || '',
+        sender_position: template.sender_position || '',
+        date: template.date || new Date().toISOString().split('T')[0],
+        recipients: Array.isArray(template.recipients) && template.recipients.length > 0
+          ? template.recipients.map(r => ({
+              id: r.id || '',
+              name: r.name || '',
+              position: r.position || ''
+            }))
+          : [{ id: '', name: '', position: '' }]
+      };
+  
+      Object.assign(letterForm, updatedData);
+  
+      if (template.recipients?.length > 0) {
+        await fetchRecipients();
+      }
+  
+      clearErrors();  // Call the newly defined clearErrors function
+    } catch (error) {
+      console.error('Error loading template:', error);
+      errors.template = error.message || 'Failed to load template';
+    } finally {
+      isTemplateLoading.value = false;
+    }
+  };
+
   return {
     letterForm,
     errors,
@@ -358,6 +414,7 @@ export default function useLetterModal(props, emit) {
     addRecipient,       // Add this line
     removeRecipient,    // Add this line
     getAvailableRecipients,  // Add this line
+    handleTemplateChange,  // Add this line
   };
 }
     

@@ -82,7 +82,7 @@
                         
                      
                         <select
-                          v-model="letter.type" 
+                          v-model="letter.type"  
                           required
                           class="w-[200px] border rounded-md px-4 py-2 text-base bg-white appearance-none pr-10"
                           @change="clearError('type')"
@@ -319,12 +319,12 @@
       </div> <!-- End .flex.items-center.justify-center.min-h-screen.p-4 -->
   </transition>
 
-  <!-- Remove this entire block -->
-  <!-- <SuccessMessageModal 
+  <!-- Success Message Modal -->
+  <SuccessMessageModal
     v-if="showSuccess"
-    message="Letter saved successfully!"
-    @close="closeModal"
-  /> -->
+    message="Letter updated successfully!"
+    @close="showSuccess = false"
+  />
 
   <!-- Confirmation Modal -->
   <div v-if="showConfirmModal" class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
@@ -504,7 +504,7 @@ export default {
       errors: {},
       showConfirmModal: false,
       showTemplateModal: false,  // Add this line
-      showSuccess: false,  // Keep this for controlling visibility
+      showSuccess: false,  // Ensure this is defined for controlling visibility
       recipientsList: [],
       templateName: '', // Add this line
       isSubmitting: false,
@@ -789,26 +789,6 @@ export default {
           'letter to admin': 'Letter to Admin'
         };
 
-        // Map recipients to include id, name, and position
-        const recipientsPayload = Array.isArray(this.letter.recipients)
-          ? this.letter.recipients
-              .filter(r => r && (typeof r === 'object' ? r.id : r))
-              .map(r => {
-                if (typeof r === 'object') {
-                  return {
-                    id: parseInt(r.id, 10),
-                    name: r.name || '',
-                    position: r.position || ''
-                  };
-                } else {
-                  const found = this.recipientsList.find(rec => rec.id == r);
-                  return found
-                    ? { id: parseInt(found.id, 10), name: found.name, position: found.position }
-                    : { id: parseInt(r, 10), name: '', position: '' };
-                }
-              })
-          : [];
-
         const payload = {
           title: this.letter.title,
           type: typeMapping[this.letter.type] || this.letter.type,
@@ -817,16 +797,34 @@ export default {
           date: this.letter.date,
           sender_name: this.letter.sender_name,
           sender_position: this.letter.sender_position,
-          recipients: recipientsPayload // <-- now includes id, name, position
+          recipients: this.letter.recipients
+            .filter(r => r && r.id)
+            .map(r => ({
+              id: parseInt(r.id, 10),
+              name: r.name,
+              position: r.position
+            }))
         };
 
         const endpoint = `/letters/${this.letter.id}`;
         const response = await apiClient.put(endpoint, payload);
 
         this.showConfirmModal = false;
-        this.closeModal();
-        this.$emit('refresh-letters');
-        this.$emit('update-letter', response.data);
+        this.showSuccess = true;
+        
+        // Clear any existing timeout
+        if (this.successTimeout) {
+          clearTimeout(this.successTimeout);
+        }
+        
+        // Set new timeout and store its ID
+        this.successTimeout = setTimeout(() => {
+          this.showSuccess = false;
+          this.closeModal();
+          this.$emit('refresh-letters');
+          this.$emit('update-letter', response.data);
+        }, 3000);
+
       } catch (error) {
         console.error('Error updating letter:', error);
         this.errors.submit = error.response?.data?.message || 'Failed to update letter';
@@ -835,6 +833,19 @@ export default {
       }
     },
 
+    // Add to data()
+    data() {
+      return {
+        successTimeout: null,
+      }
+    },
+
+    // Add cleanup in beforeUnmount
+    beforeUnmount() {
+      if (this.successTimeout) {
+        clearTimeout(this.successTimeout);
+      }
+    },
     async handleQuickSave() {
         if (this.isSubmitting) return;
         

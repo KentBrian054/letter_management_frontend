@@ -45,14 +45,18 @@
             <tr v-for="letter in paginatedLetters" :key="letter.id">
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center space-x-2">
-                  <LetterActions 
+                
+                  <LetterActions
                     :letter="letter"
                     :is-loading="isPreviewLoading"
                     @edit="openEditModal"
                     @preview-pdf="previewPDF"
                     @convert-pdf-to-word="convertPDFToWord"
-                    @delete="confirmDelete"
-                  />
+                    @delete="handleDelete"
+                    @refresh-letters="fetchLetters"
+                    />
+                    
+                  
                 </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">{{ letter.title }}</td>
@@ -561,22 +565,27 @@ export default {
       this.showConfirmDialog = true;
     },
 
-    async deleteLetter(id) {
+    async handleDelete(id) {
       try {
-        await apiClient.delete(`/letters/${id}`);
-        this.showConfirmDialog = false;
+        // Remove from local state immediately
+        this.letters = this.letters.filter(letter => letter.id !== id);
         this.showDeleteSuccess = true;
+        
+        // Refresh the list after deletion
         await this.fetchLetters();
+        
         setTimeout(() => {
           this.showDeleteSuccess = false;
-        }, 1500);
+        }, 3000);
       } catch (error) {
         console.error('Delete error:', error);
-        alert(error.response?.data?.message || 'Failed to delete letter');
-      } finally {
-        this.confirmDeleteId = null;
+        // Refresh to ensure data consistency
+        await this.fetchLetters();
       }
     },
+
+    // Remove or comment out the deleteLetter method since we're now handling deletion in LetterActions
+    // async deleteLetter(id) { ... },
 
     // Add the missing methods inside the methods object
     async handlePreviewPDF() {
@@ -633,34 +642,81 @@ export default {
       }
     },  // <-- Add this comma
 
-    handleLetterUpdated(updatedLetter) {
-      // Find and update the letter in the letters array
-      const index = this.letters.findIndex(l => l.id === updatedLetter.id);
-      if (index !== -1) {
-        this.letters.splice(index, 1, {
-          ...this.letters[index],
-          ...updatedLetter,
-          recipients: updatedLetter.recipients || this.letters[index].recipients
-        });
+    // Fix the handleLetterUpdated method
+    async handleLetterUpdated(updatedLetter) {
+      try {
+        const index = this.letters.findIndex(l => l.id === updatedLetter.id);
+        if (index !== -1) {
+          this.letters.splice(index, 1, updatedLetter);
+          
+          // Show success message
+          this.showSuccessMessage = true;
+          this.successMessage = 'Letter updated successfully';
+          
+          // Hide the edit modal
+          this.showEditModal = false;
+          
+          // Refresh the list
+          await this.fetchLetters();
+          
+          // Clear any existing timeout
+          if (this.successTimeout) {
+            clearTimeout(this.successTimeout);
+          }
+          
+          // Set new timeout
+          this.successTimeout = setTimeout(() => {
+            this.showSuccessMessage = false;
+            this.successMessage = '';
+          }, 3000);
+        }
+      } catch (error) {
+        console.error('Error updating letter:', error);
+        await this.fetchLetters();
       }
-      
-      // Show success message
-      this.showSuccess('Letter updated successfully');
     },
-    
-    showSuccess(message) {
-      this.successMessage = message;
-      this.showSuccessMessage = true;
-      
-      // Clear previous timeout if exists
+
+    // Add this to data()
+    data() {
+      return {
+        isPreviewLoading: false,
+        isExporting: false,
+        showPreviewModal: false,
+        letters: [],
+        recipients: [],
+        showModal: false,
+        showLetterForm: false,
+        showEditModal: false,
+        showConfirmDialog: false,
+        showDeleteConfirmModal: false,
+        showDeleteSuccess: false,
+        confirmDeleteId: null,
+        selectedLetter: null,
+        currentPage: 1,
+        perPage: 10,
+        searchQuery: '',
+        sortKey: 'title',
+        dateRange: {
+          start: '',
+          end: ''
+        },
+        selectedType: '',
+        searchSubject: '',
+        searchRecipient: '',
+        isFetching: false,
+        lastRequestTime: 0,
+        dropdownStates: {},
+        showPdfPreview: false,
+        currentPdfUrl: null,
+        networkStatus: false
+      };
+    },
+
+    // Add cleanup in beforeUnmount
+    beforeUnmount() {
       if (this.successTimeout) {
         clearTimeout(this.successTimeout);
       }
-      
-      // Hide after 3 seconds
-      this.successTimeout = setTimeout(() => {
-        this.showSuccessMessage = false;
-      }, 3000);
     }
   }  // <-- This closes the methods object
 }  // <-- This closes the export default object

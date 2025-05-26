@@ -100,7 +100,7 @@
                         <select
                           v-model="selectedTemplate"
                           class="w-[200px] border rounded-md px-4 py-2 text-base bg-white appearance-none pr-10"
-                          @change="handleTemplateChange"
+                          @change="handleTemplateChange($event)"  
                           :disabled="isTemplateLoading"
                         >
                           <option value="">Select Template</option>

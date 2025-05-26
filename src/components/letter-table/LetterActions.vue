@@ -170,11 +170,14 @@ export default {
         if (response.status === 200 || response.status === 204) {
           this.showDeleteConfirm = false;
           this.showDeleteSuccess = true;
+          
+          // Emit both events to ensure parent components update
+          this.$emit('delete', this.letter.id);
           this.$emit('refresh-letters');
-    
+          
           setTimeout(() => {
             this.showDeleteSuccess = false;
-          }, 1500);
+          }, 3000);
         }
       } catch (error) {
         console.error('Error deleting letter:', error);
@@ -187,32 +190,31 @@ export default {
 
     async handlePreviewPDF() {
       try {
-        this.isLoadingPDF = true; // Set loading state
-        if (!this.letter?.id) {
-          throw new Error('No letter selected');
+        this.isLoadingPDF = true;
+        if (!this.letter?.id || !this.letter?.type) {
+          throw new Error('Letter ID or type is missing');
         }
 
-        const normalizedType = this.letter.type?.trim().toLowerCase();
-        const endpointMap = {
-          'memo': `/memos/${this.letter.id}/preview-pdf`,
-          'endorsement': `/endorsements/${this.letter.id}/preview-pdf`,
-          'letter to admin': `/letters-to-admin/${this.letter.id}/preview-pdf`,
-          'invitation meeting': `/invitation-meetings/${this.letter.id}/preview-pdf`,
-          'letter_to_admin': `/letters-to-admin/${this.letter.id}/preview-pdf`,
-          'invitation_meeting': `/invitation-meetings/${this.letter.id}/preview-pdf`
+        // Map letter types to endpoint format
+        const typeToEndpoint = {
+          'memo': 'memo',
+          'endorsement': 'endorsement',
+          'letter to admin': 'letter-to-admin',
+          'invitation meeting': 'invitation-meeting'
         };
 
-        const endpoint = endpointMap[normalizedType];
+        const letterType = this.letter.type.trim().toLowerCase();
+        const endpoint = typeToEndpoint[letterType];
+        
         if (!endpoint) {
-          throw new Error(`Invalid letter type: ${this.letter.type}`);
+          throw new Error('Invalid letter type');
         }
 
-        const response = await apiClient.get(endpoint, {
+        const response = await apiClient.get(`/pdf/${this.letter.id}/${endpoint}`, {
           responseType: 'blob',
           headers: {
             'Accept': 'application/pdf'
-          },
-          baseURL: 'http://192.168.100.13:8000'
+          }
         });
 
         if (response.status !== 200 || !response.headers['content-type'].includes('application/pdf')) {
@@ -227,20 +229,38 @@ export default {
         this.errorMessage = error.message || 'Failed to generate PDF preview. Please try again.';
         this.showErrorMessage = true;
       } finally {
-        this.isLoadingPDF = false; // Reset loading state
+        this.isLoadingPDF = false;
+        this.showPreviewModal = false;
       }
     },
+
     async handleExportWord() {
       try {
-        this.isConverting = true; // Set loading state
-        this.showPreviewModal = false;
-        await this.$emit('convert-pdf-to-word', this.letter);
+        this.isConverting = true;
+        const response = await apiClient.get(`/pdf/word/${this.letter.id}`, {
+          responseType: 'blob',
+          headers: {
+            'Accept': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+          }
+        });
+
+        const blob = new Blob([response.data], { 
+          type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' 
+        });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${this.letter.title || 'letter'}.docx`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
       } catch (error) {
         console.error('Export error:', error);
         this.showErrorMessage = true;
         this.errorMessage = 'Failed to export to Word. Please try again.';
       } finally {
-        this.isConverting = false; // Reset loading state
+        this.isConverting = false;
+        this.showPreviewModal = false;
       }
     },
     handleEdit() {
