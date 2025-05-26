@@ -77,6 +77,18 @@
         </div>
         <div>
           <nav class="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+            <!-- Previous Button with Icon -->
+            <button
+              @click="page > 1 ? page-- : null"
+              :disabled="page === 1"
+              class="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0"
+              :class="{ 'opacity-50 cursor-not-allowed': page === 1 }"
+            >
+              <span class="sr-only">Previous</span>
+              <ChevronLeftIcon class="h-5 w-5" aria-hidden="true" />
+            </button>
+            
+            <!-- Page Number Buttons -->
             <button
               v-for="pageNum in displayedPages"
               :key="pageNum"
@@ -89,6 +101,17 @@
             >
               {{ pageNum }}
             </button>
+
+            <!-- Next Button with Icon -->
+            <button
+              @click="page < totalPages ? page++ : null"
+              :disabled="page === totalPages"
+              class="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0"
+              :class="{ 'opacity-50 cursor-not-allowed': page === totalPages }"
+            >
+              <span class="sr-only">Next</span>
+              <ChevronRightIcon class="h-5 w-5" aria-hidden="true" />
+            </button>
           </nav>
         </div>
       </div>
@@ -99,7 +122,25 @@
       v-if="showAddModal"
       :recipient="selectedRecipient"
       @close="closeModal"
-      @save="handleSave"
+      @save="handleFormSave" 
+    />
+
+    <!-- REMOVE Confirmation Modal for Update - now handled internally by RecipientForm -->
+    <!--
+    <ConfirmationModal
+      :show="showUpdateConfirmModal"
+      title="Update Recipient"
+      message="Are you sure you want to update this recipient?"
+      @confirm="confirmUpdateRecipient"
+      @cancel="cancelUpdateRecipient"
+    />
+    -->
+
+    <!-- Show success message -->
+    <SuccessMessageModal
+      v-if="showSuccessModal"
+      :message="successMessage"
+      @close="showSuccessModal = false"
     />
   </div>
 </template>
@@ -108,14 +149,20 @@
 import { ref, onMounted, computed } from 'vue'
 import RecipientActions from './RecipientActions.vue'
 import RecipientForm from './RecipientForm.vue'
-import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/vue/24/outline'  // Add these imports
+import SuccessMessageModal from '../letter-table/modals/SuccessMessageModal.vue'
+import ConfirmationModal from '../letter-table/modals/ConfirmationModal.vue' // Keep import if used elsewhere, otherwise remove
 import apiClient from '@/utils/apiClient'
-import { useToast } from 'vue-toastification'
+import { PlusIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/vue/24/solid' // Import PlusIcon and Arrow Icons
 
-const toast = useToast()
-const recipients = ref([])
 const showAddModal = ref(false)
 const selectedRecipient = ref(null)
+
+// REMOVE Confirmation modal state for update - now handled internally by RecipientForm
+// const showUpdateConfirmModal = ref(false)
+// const pendingUpdateRecipient = ref(null)
+
+const recipients = ref([])
+
 const page = ref(1)
 const perPage = ref(10)
 const searchQuery = ref('')
@@ -154,7 +201,8 @@ const displayedPages = computed(() => {
 const fetchRecipients = async () => {
   try {
     const response = await apiClient.get('/recipients');
-    recipients.value = response.data.data || response.data || [];
+    // Sort by id descending (assuming higher id is newer)
+    recipients.value = (response.data.data || response.data || []).sort((a, b) => b.id - a.id);
   } catch (error) {
     console.error('Error fetching recipients:', error);
     recipients.value = [];
@@ -166,15 +214,64 @@ const handleDelete = async (id) => {
   try {
     await apiClient.delete(`/recipients/${id}`);
     await fetchRecipients();
+    // Add the success message call here
+    showSuccess('Recipient has been successfully deleted.');
   } catch (error) {
     console.error('Error deleting recipient:', error);
     alert('Failed to delete recipient. Please try again.');
   }
 }
 
-const handleSave = async (recipient) => {
-  await fetchRecipients();
-  closeModal();
+// handleSave now only handles the API call, refresh, and success message after RecipientForm emits 'save'
+const handleFormSave = async (recipientData) => {
+  try {
+    if (recipientData.id) {
+      // Handle Update API call
+      await apiClient.put(`/recipients/${recipientData.id}`, {
+        name: recipientData.name,
+        position: recipientData.position
+      });
+      showSuccess('Recipient has been successfully updated.');
+    } else {
+      // Handle Add API call
+      await apiClient.post('/recipients', {
+        name: recipientData.name,
+        position: recipientData.position
+      });
+      showSuccess('New recipient has been successfully added.');
+    }
+    
+    await fetchRecipients();
+    page.value = 1; // Always go to the first page after save/update
+    closeModal(); // Close the form after successful save/update
+
+  } catch (error) {
+    console.error('Error saving recipient:', error);
+    alert(`Failed to save recipient. Please try again. Error: ${error.message}`);
+    // Keep form open on error
+  }
+}
+
+const showSuccessModal = ref(false)
+const successMessage = ref('')
+let successTimeout = null
+
+function handleSuccessClose() {
+  showSuccessModal.value = false
+  if (successTimeout) {
+    clearTimeout(successTimeout)
+    successTimeout = null
+  }
+}
+
+function showSuccess(message) {
+  successMessage.value = message
+  showSuccessModal.value = true
+  // Add the auto-close timeout back for the success message itself
+  if (successTimeout) clearTimeout(successTimeout)
+  successTimeout = setTimeout(() => {
+    handleSuccessClose()
+  }, 5000)
 }
 
 const closeModal = () => {
@@ -190,6 +287,11 @@ const handleEdit = (recipient) => {
   selectedRecipient.value = { ...recipient }
   showAddModal.value = true
 }
+
+// REMOVE confirmUpdateRecipient and cancelUpdateRecipient functions - now handled internally by RecipientForm
+// async function confirmUpdateRecipient() { ... }
+// function cancelUpdateRecipient() { ... }
+
 </script>
 
 <style scoped>

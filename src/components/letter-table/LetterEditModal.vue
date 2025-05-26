@@ -403,8 +403,7 @@ export default {
   name: 'LetterEditModal',
   components: {
     QuillEditor,
-    // Remove this line
-    // SuccessMessageModal,
+    SuccessMessageModal, // Add this line
     ValidationWarning // Register the component
   },
   props: {
@@ -423,7 +422,7 @@ export default {
     }
   },
   // In the emits array, add template-saved
-  emits: ['update:modelValue', 'close', 'save-letter', 'update-letter', 'refresh-letters', 'update:editMode', 'template-saved'],
+  emits: ['update:modelValue', 'close', 'save-letter', 'update-letter', 'refresh-letters', 'update:editMode', 'template-saved', 'show-success'],
   data() {
     const defaultForm = {
       title: '',
@@ -743,16 +742,7 @@ export default {
 
     // Add these methods
     async handleSubmit() {
-      if (this.isSubmitting) return;
-      
-      if (!this.validateForm()) {
-        return;
-      }
-
-      // For update operation, submit directly without confirmation
-      if (this.editMode) {
-        await this.confirmSubmit();
-      } else {
+      if (this.validateForm()) {
         this.showConfirmModal = true;
       }
     },
@@ -760,55 +750,29 @@ export default {
     async confirmSubmit() {
       try {
         this.isSubmitting = true;
-
-        const typeMapping = {
-          'memo': 'Memo',
-          'endorsement': 'Endorsement',
-          'invitation meeting': 'Invitation Meeting',
-          'letter to admin': 'Letter to Admin'
-        };
-
-        // Map recipients to include id, name, and position
-        const recipientsPayload = Array.isArray(this.letter.recipients)
-          ? this.letter.recipients
-              .filter(r => r && (typeof r === 'object' ? r.id : r))
-              .map(r => {
-                if (typeof r === 'object') {
-                  return {
-                    id: parseInt(r.id, 10),
-                    name: r.name || '',
-                    position: r.position || ''
-                  };
-                } else {
-                  const found = this.recipientsList.find(rec => rec.id == r);
-                  return found
-                    ? { id: parseInt(found.id, 10), name: found.name, position: found.position }
-                    : { id: parseInt(r, 10), name: '', position: '' };
-                }
-              })
-          : [];
-
-        const payload = {
-          title: this.letter.title,
-          type: typeMapping[this.letter.type] || this.letter.type,
+        
+        const letterData = {
+          ...this.letter,
+          type: this.letter.type,
           subject: this.letter.subject,
-          content: this.letter.content,
-          date: this.letter.date,
-          sender_name: this.letter.sender_name,
-          sender_position: this.letter.sender_position,
-          recipients: recipientsPayload // <-- now includes id, name, position
+          // Format recipients as array of IDs only
+          recipients: this.letter.recipients
+            .filter(r => r && r.id) // Filter out empty recipients
+            .map(r => parseInt(r.id)) // Convert to integer
         };
 
-        const endpoint = `/letters/${this.letter.id}`;
-        const response = await apiClient.put(endpoint, payload);
-
-        this.showConfirmModal = false;
-        this.closeModal();
-        this.$emit('refresh-letters');
-        this.$emit('update-letter', response.data);
+        const response = await apiClient.put(`/letters/${this.letter.id}`, letterData);
+        
+        if (response.data) {
+          this.$emit('update-letter', response.data);
+          this.$emit('refresh-letters');
+          this.showConfirmModal = false;
+          this.$emit('update:modelValue', false);
+          this.$emit('show-success', 'Letter has been successfully updated');
+        }
       } catch (error) {
         console.error('Error updating letter:', error);
-        this.errors.submit = 'Failed to update letter. Please try again.';
+        this.errors.submit = error.response?.data?.message || 'Failed to update letter';
       } finally {
         this.isSubmitting = false;
       }
@@ -934,22 +898,28 @@ export default {
         } catch (error) {
             console.error('Error fetching templates:', error);
         }
-    }
-  }, // End of methods
+    },
 
-  watch: {
-    selectedTemplate(newVal) {
-        if (newVal) {
-            this.handleTemplateChange(newVal);
+    async handleLetterUpdated(letterData) {
+        try {
+            this.isFetching = true;
+            const response = await apiClient.put(`/letters/${letterData.id}`, letterData);
+            
+            if (response.data) {
+                await this.$emit('refresh-letters');
+                this.$emit('update:modelValue', false);
+                this.$emit('show-success', 'Letter updated successfully');
+            }
+        } catch (error) {
+            console.error('Error updating letter:', error);
+            alert(error.response?.data?.message || 'Failed to update letter');
+        } finally {
+            this.isFetching = false;
         }
     },
-    modelValue: {
-        immediate: true,
-        async handler(newVal) {
-            if (newVal) {
-                await this.fetchTemplates();
-            }
-        }
+
+    showSuccess(message) {
+      this.$emit('show-success', message);
     }
 },
 

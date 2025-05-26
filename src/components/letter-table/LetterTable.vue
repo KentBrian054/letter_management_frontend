@@ -150,13 +150,22 @@
       @refresh-letters="fetchLetters"
     />
     
+    <!-- Update the LetterEditModal component usage -->
     <LetterEditModal
       v-model="showEditModal"
       :letter="selectedLetter"
-      ref="editModal"
       @update-letter="handleLetterUpdated"
       @refresh-letters="fetchLetters"
+      @show-success="showSuccess"
     />
+
+    <!-- Add success message display -->
+    <div
+      v-if="showSuccessMessage"
+      class="fixed bottom-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg"
+    >
+      {{ successMessage }}
+    </div>
 
     <!-- Add PreviewOptionsModal -->
     <PreviewOptionsModal
@@ -381,10 +390,10 @@ export default {
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
         
-        return `${year}-${month}-${day}`;
+        return `${year}-${month}-${day}`;  // <-- Add semicolon here
       } catch (error) {
         console.error('Date formatting error:', error);
-        return '';
+        return '';  // <-- Add semicolon here
       }
     },
     // Keep only one version of each method
@@ -600,13 +609,64 @@ export default {
       this.selectedLetter = letter;
       this.showEditModal = true;
     },
+
     previewPDF(letter) {
       this.selectedLetter = letter;
       this.showPreviewModal = true;
+    },
+
+    previousPage() {
+      if (this.currentPage > 1) {
+        this.currentPage--;
+      }
+    },
+
+    nextPage() {
+      if (this.currentPage < this.totalPages) {
+        this.currentPage++;
+      }
+    },
+
+    goToPage(page) {
+      if (page >= 1 && page <= this.totalPages) {
+        this.currentPage = page;
+      }
+    },  // <-- Add this comma
+
+    handleLetterUpdated(updatedLetter) {
+      // Find and update the letter in the letters array
+      const index = this.letters.findIndex(l => l.id === updatedLetter.id);
+      if (index !== -1) {
+        this.letters.splice(index, 1, {
+          ...this.letters[index],
+          ...updatedLetter,
+          recipients: updatedLetter.recipients || this.letters[index].recipients
+        });
+      }
+      
+      // Show success message
+      this.showSuccess('Letter updated successfully');
+    },
+    
+    showSuccess(message) {
+      this.successMessage = message;
+      this.showSuccessMessage = true;
+      
+      // Clear previous timeout if exists
+      if (this.successTimeout) {
+        clearTimeout(this.successTimeout);
+      }
+      
+      // Hide after 3 seconds
+      this.successTimeout = setTimeout(() => {
+        this.showSuccessMessage = false;
+      }, 3000);
     }
-  }
-} // End of export default
+  }  // <-- This closes the methods object
+}  // <-- This closes the export default object
 </script>
+
+
 
 
 

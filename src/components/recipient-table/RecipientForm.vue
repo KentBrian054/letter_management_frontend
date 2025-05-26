@@ -82,59 +82,42 @@
       </div>
     </div>
 
-    <!-- Enhanced Success Modal -->
-    <div v-if="showSuccessModal" class="fixed inset-0 z-[60] overflow-y-auto">
-      <div class="flex items-center justify-center min-h-screen p-4">
-        <div class="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity"></div>
-        <div class="relative bg-white rounded-xl shadow-2xl p-6 max-w-sm w-full mx-auto transform transition-all">
-          <div class="flex items-center space-x-4">
-            <div class="flex-shrink-0 w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
-              <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <div>
-              <h3 class="text-lg font-semibold text-gray-900">Success!</h3>
-              <p class="mt-1 text-sm text-gray-500">{{ successMessage }}</p>
-            </div>
-          </div>
-          <div class="mt-6 flex justify-end">
-            <button
-              type="button"
-              @click="handleSuccessClose"
-              class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-            >
-              Done
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <!-- Confirmation Modal (now inside RecipientForm) -->
+    <ConfirmationModal
+      :show="showConfirmModal"
+      :title="recipient ? 'Confirm Update' : 'Confirm Save'"
+      :message="recipient ? 'Are you sure you want to update this recipient?' : 'Are you sure you want to save this new recipient?'"
+      @confirm="handleConfirmSave"
+      @cancel="handleCancelSave"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, watch, computed } from 'vue'  // Add computed import
+import { ref, watch } from 'vue'
 import debounce from 'lodash/debounce'
 import apiClient from '@/utils/apiClient'
+import ConfirmationModal from '../letter-table/modals/ConfirmationModal.vue' // Import ConfirmationModal
 
 const props = defineProps({
   recipient: {
     type: Object,
-    default: () => null  // Change to function
+    default: () => null
   }
 })
 
 const emit = defineEmits(['close', 'save'])
 
-// Initialize form with default values and include id for updates
 const form = ref({
   id: null,
   name: '',
   position: ''
 })
 
-// Update watch to handle id and null cases
+// State for the internal confirmation modal
+const showConfirmModal = ref(false)
+const pendingFormData = ref(null)
+
 watch(() => props.recipient, (newRecipient) => {
   if (newRecipient) {
     form.value = {
@@ -151,46 +134,34 @@ watch(() => props.recipient, (newRecipient) => {
   }
 }, { immediate: true })
 
-const showSuccessModal = ref(false)
-
 const handleSubmit = debounce(async () => {
-  try {
-    let response;
-    if (form.value.id) {
-      // Update existing recipient
-      response = await apiClient.put(`/recipients/${form.value.id}`, {
-        name: form.value.name,
-        position: form.value.position
-      });
-    } else {
-      // Create new recipient
-      response = await apiClient.post('/recipients', {
-        name: form.value.name,
-        position: form.value.position
-      });
-    }
-    emit('save', response.data);
-    showSuccessModal.value = true;
-  } catch (error) {
-    console.error('Save failed:', error)
-    let errorMessage = props.recipient ? 'Error updating recipient. ' : 'Error creating recipient. '
-    
-    if (error.code === 'ECONNABORTED') {
-      errorMessage += 'Request timed out. Please try again.'
-    } else if (error.response?.status === 422) {
-      errorMessage += 'Please check your input data.'
-    } else if (error.response?.status === 500) {
-      errorMessage += 'Server error. Please try again later.'
-    } else {
-      errorMessage += 'Please check your network connection and try again.'
-    }
-    
-    alert(errorMessage)
-  }
-}, 300);
+  // Always show confirmation modal before emitting save
+  pendingFormData.value = { ...form.value } // Store current form data
+  showConfirmModal.value = true
+  // Do NOT emit 'save' yet
+}, 300)
 
-// Success message computed property
-const successMessage = computed(() => 
-  form.value.id ? 'Recipient has been successfully updated.' : 'New recipient has been successfully added.'
-)
+// Handle confirmation from the internal modal
+const handleConfirmSave = () => {
+  if (pendingFormData.value) {
+    emit('save', pendingFormData.value) // Emit save after confirmation
+    // Parent (RecipientTable) will handle API call, refresh, success, and closing the form
+  }
+  // Reset confirmation state
+  showConfirmModal.value = false
+  pendingFormData.value = null
+}
+
+// Handle cancellation from the internal modal
+const handleCancelSave = () => {
+  // Reset confirmation state
+  showConfirmModal.value = false
+  pendingFormData.value = null
+  // Form remains open
+}
+
 </script>
+
+<style scoped>
+/* Your styles here */
+</style>

@@ -1,6 +1,6 @@
 <template>
   <div class="flex items-center space-x-2">
-    <!-- Edit Button with updated icon -->
+    <!-- Edit Button -->
     <ActionButton 
       variant="edit" 
       @click="$emit('edit', recipient)" 
@@ -15,7 +15,7 @@
       </svg>
     </ActionButton>
     
-    <!-- Delete Button with updated icon -->
+    <!-- Delete Button -->
     <ActionButton 
       variant="delete" 
       @click="showDeleteConfirm = true"
@@ -37,26 +37,18 @@
       @confirm="handleDelete"
       @cancel="showDeleteConfirm = false"
     />
-
-    <SuccessMessageModal
-      v-if="showSuccessMessage"
-      message="Recipient deleted successfully!"
-      @close="showSuccessMessage = false"
-    />
   </div>
 </template>
 
 <script>
 import ActionButton from '../letter-table/ActionButton.vue'
 import ConfirmationModal from '../letter-table/modals/ConfirmationModal.vue'
-import SuccessMessageModal from '../letter-table/modals/SuccessMessageModal.vue'
 
 export default {
   name: 'RecipientActions',
   components: {
     ActionButton,
-    ConfirmationModal,
-    SuccessMessageModal
+    ConfirmationModal
   },
   props: {
     recipient: {
@@ -66,18 +58,19 @@ export default {
   },
   data() {
     return {
-      showDeleteConfirm: false,
-      showSuccessMessage: false
+      showDeleteConfirm: false
     }
   },
   methods: {
     async handleDelete() {
-      this.$emit('delete', this.recipient.id)
-      this.showDeleteConfirm = false
-      this.showSuccessMessage = true
-      setTimeout(() => {
-        this.showSuccessMessage = false
-      }, 3000) // Hide success message after 3 seconds
+      try {
+        this.$emit('delete', this.recipient.id)
+        this.showDeleteConfirm = false
+        // Let parent component handle success/error messages
+      } catch (error) {
+        console.error('Delete failed:', error)
+        this.$emit('error', 'Failed to delete recipient')
+      }
     }
   }
 }
