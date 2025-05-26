@@ -188,6 +188,18 @@
                         </button>
                       </div>
                       
+                      <!-- Remove this duplicate select element -->
+                      <!-- <select
+                        v-model="recipient.id"
+                        @change="updateRecipient(index, $event.target.value)"
+                        class="w-[500px] border rounded-md px-4 py-2 appearance-none bg-white pr-10"
+                        :class="{ 'border-red-500': errors.recipients }"
+                      >
+                        <option value="">Select Recipient</option>
+                        <option v-for="r in recipientsList" :key="r.id" :value="r.id">
+                          {{ r.name }} - {{ r.position }}
+                        </option>
+                      </select> -->
 
                       <div v-if="recipient.name && recipient.position" class="mt-1 text-sm text-gray-600 flex items-center gap-2">
                         <span
@@ -240,6 +252,7 @@
                     <ValidationWarning v-if="errors.date" :message="errors.date" />
                   </div>
                 </div>
+
                 <!-- Content -->
                 <div class="flex items-start gap-4 mt-6">
                   <label class="font-medium w-24 text-lg pt-2">Content:</label>
@@ -261,6 +274,7 @@
                     </div>
                   </div>
                 </div>
+
                 <!-- Sender Information section -->
                 <div class="space-y-4 mt-8 pt-6 border-t">
                   <h3 class="font-medium text-lg">Sender Information</h3>
@@ -279,7 +293,8 @@
                       />
                       <ValidationWarning v-if="errors.sender_name" :message="errors.sender_name" />
                     </div>
-                  </div>                
+                  </div>
+                  
                   <!-- Sender Position -->
                   <div class="flex items-center gap-4">
                     <label class="font-medium w-24 text-lg">Position:</label>
@@ -303,6 +318,14 @@
         </div> <!-- End .bg-white rounded-xl ... -->
       </div> <!-- End .flex.items-center.justify-center.min-h-screen.p-4 -->
   </transition>
+
+  <!-- Remove this entire block -->
+  <!-- <SuccessMessageModal 
+    v-if="showSuccess"
+    message="Letter saved successfully!"
+    @close="closeModal"
+  /> -->
+
   <!-- Confirmation Modal -->
   <div v-if="showConfirmModal" class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
     <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
@@ -387,11 +410,7 @@
   </div>
 </template>
 
-
-
 <script>
-// Add this import at the top with other imports
-import '@/assets/styles/quill-fonts.css'
 // Remove duplicate imports and organize them
 import { Quill, QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
@@ -439,7 +458,6 @@ export default {
     const localLetter = { ...defaultForm, ...this.letter };
   
     return {
-      // In data() return statement
       editorOptions: {
         modules: {
           toolbar: [
@@ -452,15 +470,8 @@ export default {
             [{ 'direction': 'rtl' }],
             [{ 'size': ['small', false, 'large', 'huge'] }],
             [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
-            [{ 'font': [
-              '',                  // Default sans-serif
-              'times-new-roman',   // Serif
-              'georgia',           // Serif
-              'arial',            // Sans-serif
-              'helvetica',        // Sans-serif
-              'verdana'           // Sans-serif
-            ] }],
             [{ 'color': [] }, { 'background': [] }],
+            [{ 'font': [] }],
             [{ 'align': [] }],
             ['clean']
           ]
@@ -679,23 +690,43 @@ export default {
       if (!recipientId) return;
     
       // Check if recipient is already selected in another index
-      const isDuplicate = this.letter.recipients.some((recipient, idx) => {
-        const currentId = typeof recipient === 'object' ? recipient.id : recipient;
-        const compareId = typeof recipientId === 'string' ? parseInt(recipientId) : recipientId;
-        return idx !== index && currentId === compareId;
-      });
+      const isDuplicate = this.letterForm.recipients.some((recipient, idx) => 
+        idx !== index && recipient.id === (typeof recipientId === 'string' ? parseInt(recipientId) : recipientId)
+      );
     
       if (isDuplicate) {
         this.errors.recipients = 'This recipient is already selected';
         return;
       }
     
-      // Convert to simple ID for the letter.recipients array
-      this.letter.recipients[index] = parseInt(recipientId);
-      this.clearError('recipients');
-    },
+      const selectedRecipient = this.recipientsList.find(r => 
+        r.id === (typeof recipientId === 'string' ? parseInt(recipientId) : recipientId)
+      );
     
-    // Update validateForm method's recipient validation
+      if (selectedRecipient) {
+        this.letterForm.recipients[index] = {
+          id: selectedRecipient.id,
+          name: selectedRecipient.name || '',
+          position: selectedRecipient.position || ''
+        };
+        this.clearError('recipients');
+      }
+    },  // Add comma here
+    handleBack() {
+      // Reset form and close modal
+      this.errors = {};
+      this.letterForm = {
+        title: '',
+        type: '',
+        subject: '',
+        date: new Date().toISOString().split('T')[0],
+        recipients: [{ id: '', name: '', position: '' }],
+        content: '',
+        sender_name: '',
+        sender_position: ''
+      };
+      this.closeModal();
+    },
     validateForm() {
       this.errors = {};
       let isValid = true;
@@ -750,26 +781,52 @@ export default {
     async confirmSubmit() {
       try {
         this.isSubmitting = true;
-        
-        const letterData = {
-          ...this.letter,
-          type: this.letter.type,
-          subject: this.letter.subject,
-          // Format recipients as array of IDs only
-          recipients: this.letter.recipients
-            .filter(r => r && r.id) // Filter out empty recipients
-            .map(r => parseInt(r.id)) // Convert to integer
+
+        const typeMapping = {
+          'memo': 'Memo',
+          'endorsement': 'Endorsement',
+          'invitation meeting': 'Invitation Meeting',
+          'letter to admin': 'Letter to Admin'
         };
 
-        const response = await apiClient.put(`/letters/${this.letter.id}`, letterData);
-        
-        if (response.data) {
-          this.$emit('update-letter', response.data);
-          this.$emit('refresh-letters');
-          this.showConfirmModal = false;
-          this.$emit('update:modelValue', false);
-          this.$emit('show-success', 'Letter has been successfully updated');
-        }
+        // Map recipients to include id, name, and position
+        const recipientsPayload = Array.isArray(this.letter.recipients)
+          ? this.letter.recipients
+              .filter(r => r && (typeof r === 'object' ? r.id : r))
+              .map(r => {
+                if (typeof r === 'object') {
+                  return {
+                    id: parseInt(r.id, 10),
+                    name: r.name || '',
+                    position: r.position || ''
+                  };
+                } else {
+                  const found = this.recipientsList.find(rec => rec.id == r);
+                  return found
+                    ? { id: parseInt(found.id, 10), name: found.name, position: found.position }
+                    : { id: parseInt(r, 10), name: '', position: '' };
+                }
+              })
+          : [];
+
+        const payload = {
+          title: this.letter.title,
+          type: typeMapping[this.letter.type] || this.letter.type,
+          subject: this.letter.subject,
+          content: this.letter.content,
+          date: this.letter.date,
+          sender_name: this.letter.sender_name,
+          sender_position: this.letter.sender_position,
+          recipients: recipientsPayload // <-- now includes id, name, position
+        };
+
+        const endpoint = `/letters/${this.letter.id}`;
+        const response = await apiClient.put(endpoint, payload);
+
+        this.showConfirmModal = false;
+        this.closeModal();
+        this.$emit('refresh-letters');
+        this.$emit('update-letter', response.data);
       } catch (error) {
         console.error('Error updating letter:', error);
         this.errors.submit = error.response?.data?.message || 'Failed to update letter';
@@ -872,17 +929,12 @@ export default {
     
     initQuill() {
       if (Quill) {
-        const Font = Quill.import('formats/font');
-        // Make sure whitelist matches exactly with toolbar font options
+        const Font = Quill.import('formats/font')
         Font.whitelist = [
-          '',                  // Default sans-serif
-          'times-new-roman',   // Serif
-          'georgia',           // Serif
-          'arial',            // Sans-serif
-          'helvetica',        // Sans-serif
-          'verdana'           // Sans-serif
-        ];
-        Quill.register(Font, true);
+          'arial', 'calibri', 'cambria', 'times-new-roman', 'courier', 'georgia', 
+          'garamond', 'tahoma', 'verdana', 'trebuchet', 'helvetica'
+        ]
+        Quill.register(Font, true)
       }
     },
 
@@ -929,12 +981,7 @@ export default {
 } // End of component export default
 </script>
 
-
-
 <style>
-/* Import the quill fonts CSS */
-@import '@/assets/styles/quill-fonts.css';
-
 .prose {
   width: 100%;
 }

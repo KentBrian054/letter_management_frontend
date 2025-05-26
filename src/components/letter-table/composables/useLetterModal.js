@@ -1,7 +1,6 @@
 
 import { ref, reactive } from 'vue';
 import { Quill } from '@vueup/vue-quill';
-import '@/assets/styles/quill-fonts.css';  // Add this import
 import apiClient from '@/utils/apiClient';
 
 export default function useLetterModal(props, emit) {
@@ -51,36 +50,14 @@ export default function useLetterModal(props, emit) {
         [{ 'direction': 'rtl' }],
         [{ 'size': ['small', false, 'large', 'huge'] }],
         [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
-        [{ 'font': [
-          '',                  // Default sans-serif
-          'arial',             // Sans-serif
-          'times-new-roman',   // Serif
-          'georgia',           // Serif
-          'verdana',          // Sans-serif
-          'helvetica'         // Sans-serif
-        ] }],
         [{ 'color': [] }, { 'background': [] }],
+        [{ 'font': [] }],
         [{ 'align': [] }],
         ['clean']
       ]
     },
     placeholder: 'Compose your letter...',
     theme: 'snow'
-  };
-
-  const initQuill = () => {
-    if (Quill) {
-      const Font = Quill.import('formats/font');
-      Font.whitelist = [
-        '',                  // Default sans-serif
-        'arial',             // Sans-serif
-        'times-new-roman',   // Serif
-        'georgia',           // Serif
-        'verdana',          // Sans-serif
-        'helvetica'         // Sans-serif
-      ];
-      Quill.register(Font, true);
-    }
   };
 
   // Helper functions
@@ -153,6 +130,17 @@ export default function useLetterModal(props, emit) {
     }
 
     return isValid;
+  };
+
+  const initQuill = () => {
+    if (Quill) {
+      const Font = Quill.import('formats/font');
+      Font.whitelist = [
+        'arial', 'calibri', 'cambria', 'times-new-roman', 'courier', 'georgia', 
+        'garamond', 'tahoma', 'verdana', 'trebuchet', 'helvetica'
+      ];
+      Quill.register(Font, true);
+    }
   };
 
   const fetchRecipients = async () => {
@@ -342,43 +330,6 @@ export default function useLetterModal(props, emit) {
     return recipientsList.value.filter(r => !selectedIds.includes(r.id));
   };
 
-  const handleTemplateChange = async (templateId) => {
-    if (!templateId) return;
-    
-    try {
-      isTemplateLoading.value = true;
-      const response = await apiClient.get(`/templates/${templateId}`);
-      const template = response.data.data || response.data;
-      
-      // Pre-fill all form fields with template data
-      letterForm.title = template.title || '';
-      letterForm.type = template.type || '';
-      letterForm.subject = template.subject || '';
-      letterForm.content = template.content || '';
-      letterForm.date = template.date ? formatDateForInput(template.date) : defaultForm.date;
-      letterForm.sender_name = template.sender_name || '';
-      letterForm.sender_position = template.sender_position || '';
-      
-      // Handle recipients
-      if (template.recipients && template.recipients.length > 0) {
-        letterForm.recipients = template.recipients.map(r => ({
-          id: r.id || '',
-          name: r.name || '',
-          position: r.position || ''
-        }));
-      }
-      
-      // Clear any existing errors
-      Object.keys(errors).forEach(key => delete errors[key]);
-      
-    } catch (error) {
-      console.error('Error loading template:', error);
-      errors.template = 'Failed to load template. Please try again.';
-    } finally {
-      isTemplateLoading.value = false;
-    }
-  };
-
   return {
     letterForm,
     errors,
@@ -397,17 +348,16 @@ export default function useLetterModal(props, emit) {
     validateForm,
     initQuill,
     fetchRecipients,
-    fetchTemplates,
+    fetchTemplates,  // Add this line
     handleBack,
     handleSubmit,
     confirmSubmit,
     handleQuickSave,
     confirmQuickSave,
-    updateRecipient,
-    addRecipient,
-    removeRecipient,
-    getAvailableRecipients,
-    handleTemplateChange,  // Add this line
+    updateRecipient,    // Add this line
+    addRecipient,       // Add this line
+    removeRecipient,    // Add this line
+    getAvailableRecipients,  // Add this line
   };
 }
     
