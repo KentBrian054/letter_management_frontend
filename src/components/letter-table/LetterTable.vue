@@ -128,7 +128,7 @@
               v-model="showModal"
               :letter="selectedLetter"
               :available-recipients="availableRecipients"
-              @save-letter="handleSaveLetter"
+              @save-letter="handleSaveLetter"  
               @update-letter="handleUpdateLetter"
               @refresh-letters="fetchLetters"
             />
@@ -584,6 +584,15 @@ export default {
       }
     },
 
+    // Add these methods here
+    handleSaveLetter(letterData) {
+        this.handleLetterSaved(letterData);
+    },
+    
+    handleUpdateLetter(letterData) {
+        this.handleLetterUpdated(letterData);
+    },
+
     // Remove or comment out the deleteLetter method since we're now handling deletion in LetterActions
     // async deleteLetter(id) { ... },
 
@@ -676,9 +685,21 @@ export default {
       }
     },
 
-    // Add this to data()
+    // Add this method
+    handleTemplateSaved() {
+      this.showSuccessMessage = true;
+      this.successMessage = 'Template saved successfully';
+      setTimeout(() => {
+        this.showSuccessMessage = false;
+      }, 3000);
+    },
+
+    // Add these to your data()
     data() {
       return {
+        showSuccess: false,
+        showSuccessMessage: false,
+        successMessage: '',
         isPreviewLoading: false,
         isExporting: false,
         showPreviewModal: false,
@@ -712,7 +733,7 @@ export default {
       };
     },
 
-    // Add cleanup in beforeUnmount
+    // Add cleanup for timeouts
     beforeUnmount() {
       if (this.successTimeout) {
         clearTimeout(this.successTimeout);

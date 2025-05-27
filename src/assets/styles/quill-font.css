@@ -1,0 +1,41 @@
+/* Custom font sizes for Quill editor */
+.ql-snow .ql-picker.ql-size .ql-picker-label[data-value="small"]::before,
+.ql-snow .ql-picker.ql-size .ql-picker-item[data-value="small"]::before {
+  content: 'Small';
+  font-size: 12px;
+}
+
+.ql-snow .ql-picker.ql-size .ql-picker-label::before,
+.ql-snow .ql-picker.ql-size .ql-picker-item::before {
+  content: 'Normal';
+  font-size: 14px;
+}
+
+.ql-snow .ql-picker.ql-size .ql-picker-label[data-value="large"]::before,
+.ql-snow .ql-picker.ql-size .ql-picker-item[data-value="large"]::before {
+  content: 'Large';
+  font-size: 16px;
+}
+
+.ql-snow .ql-picker.ql-size .ql-picker-label[data-value="huge"]::before,
+.ql-snow .ql-picker.ql-size .ql-picker-item[data-value="huge"]::before {
+  content: 'Huge';
+  font-size: 18px;
+}
+
+/* Font size classes */
+.ql-size-small {
+  font-size: 12px;
+}
+
+.ql-size-normal {
+  font-size: 14px;
+}
+
+.ql-size-large {
+  font-size: 16px;
+}
+
+.ql-size-huge {
+  font-size: 18px;
+}

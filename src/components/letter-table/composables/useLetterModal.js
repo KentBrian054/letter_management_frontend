@@ -196,34 +196,39 @@ export default function useLetterModal(props, emit) {
       isSubmitting.value = true;
       const payload = {
         ...letterForm,
-        recipients: letterForm.recipients
-          .filter(r => r && r.id)  // Ensure recipients have an ID
-          .map(r => parseInt(r.id, 10))  // Map to include only the ID as an integer
+        // Changed from 'recipients' to 'recipient_ids' to match backend expectation
+        recipient_ids: letterForm.recipients
+          .filter(r => r?.id)
+          .map(r => parseInt(r.id, 10))
       };
-      
-      const endpoint = props.editMode ? `/letters/${props.letter.id}` : '/letters';
+  
+      // Ensure endpoint starts with /api/
+      const endpoint = props.editMode ? `/api/letters/${props.letter.id}` : '/api/letters';
       const method = props.editMode ? 'put' : 'post';
       const response = await apiClient[method](endpoint, payload);
-      
+  
       showConfirmModal.value = false;
-      
-      // Show success message
       showSuccess.value = true;
+  
+      // Clear form after successful submission
+      Object.assign(letterForm, defaultForm);
+      
+      // Properly handle response data
+      const responseData = response.data.data || response.data;
+      emit(props.editMode ? 'update-letter' : 'save-letter', responseData);
+      emit('refresh-letters');
+  
       setTimeout(() => {
         showSuccess.value = false;
         emit('update:modelValue', false);
         emit('close');
-      }, 2000); // Show success message for 2 seconds
-      
-      if (props.editMode) {
-        emit('update-letter', response.data);
-      } else {
-        emit('save-letter', response.data);
-      }
-      emit('refresh-letters');
+      }, 2000);
+  
     } catch (error) {
-      console.error('Error saving letter:', error);
-      errors.submit = 'Failed to save letter. Please try again.';
+      console.error('Submission error:', error);
+      errors.submit = error.response?.data?.message || 
+                     error.response?.data?.error || 
+                     'Failed to save letter. Please try again.';
     } finally {
       isSubmitting.value = false;
     }
@@ -386,6 +391,82 @@ export default function useLetterModal(props, emit) {
     }
   };
 
+  // Add these functions before the return statement
+  const handleSaveLetter = async () => {
+    if (isSubmitting.value) return;
+    
+    // Trigger validation
+    if (!validateForm()) {
+      showConfirmModal.value = false; // Ensure confirmation modal is not shown if validation fails
+      return;
+    }
+
+    try {
+      isSubmitting.value = true;
+      const payload = {
+        ...letterForm,
+        recipients: letterForm.recipients
+          .filter(r => r && r.id)
+          .map(r => parseInt(r.id, 10))
+      };
+
+      // Update the endpoint to use /api/letters
+      const response = await apiClient.post('/api/letters', payload);
+      showSuccess.value = true;
+      emit('save-letter', response.data);
+      emit('refresh-letters');
+      
+      setTimeout(() => {
+        showSuccess.value = false;
+        emit('update:modelValue', false);
+        emit('close');
+      }, 2000);
+    } catch (error) {
+      console.error('Error saving letter:', error);
+      errors.submit = 'Failed to save letter. Please try again.';
+    } finally {
+      isSubmitting.value = false;
+    }
+  };
+
+  const handleUpdateLetter = async () => {
+    if (isSubmitting.value) return;
+    
+    // Trigger validation
+    if (!validateForm()) {
+      showConfirmModal.value = false; // Ensure confirmation modal is not shown if validation fails
+      return;
+    }
+
+    try {
+      isSubmitting.value = true;
+      const payload = {
+        ...letterForm,
+        recipients: letterForm.recipients
+          .filter(r => r && r.id)
+          .map(r => parseInt(r.id, 10))
+      };
+
+      // Update the endpoint to use /api/letters
+      const response = await apiClient.put(`/api/letters/${props.letter.id}`, payload);
+      showSuccess.value = true;
+      emit('update-letter', response.data);
+      emit('refresh-letters');
+      
+      setTimeout(() => {
+        showSuccess.value = false;
+        emit('update:modelValue', false);
+        emit('close');
+      }, 2000);
+    } catch (error) {
+      console.error('Error updating letter:', error);
+      errors.submit = 'Failed to update letter. Please try again.';
+    } finally {
+      isSubmitting.value = false;
+    }
+  };
+
+  // Update the return statement to include the new functions
   return {
     letterForm,
     errors,
@@ -415,6 +496,8 @@ export default function useLetterModal(props, emit) {
     removeRecipient,    // Add this line
     getAvailableRecipients,  // Add this line
     handleTemplateChange,  // Add this line
+    handleSaveLetter,    // Add this
+    handleUpdateLetter,  // Add this
   };
 }
     

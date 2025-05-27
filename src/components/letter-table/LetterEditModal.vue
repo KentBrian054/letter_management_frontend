@@ -232,45 +232,21 @@
 
                 <!-- Content section -->
                 <div class="flex items-start gap-4 mt-6">
-                    <label class="font-medium w-24 text-lg">Content:</label>
-                    <div class="flex-1">
-                        <mavon-editor
-                            v-model="letter.content"
-                            :toolbars="{
-                                bold: true,
-                                italic: true,
-                                header: true,
-                                underline: true,
-                                strikethrough: true,
-                                mark: true,
-                                superscript: true,
-                                subscript: true,
-                                quote: true,
-                                ol: true,
-                                ul: true,
-                                link: true,
-                                imagelink: true,
-                                code: true,
-                                table: true,
-                                help: true,
-                                alignleft: true,
-                                aligncenter: true,
-                                alignright: true,
-                                preview: true,
-                                fullscreen: true
-                            }"
-                            :boxShadow="false"
-                            placeholder="Write your content here..."
-                            :subfield="false"
-                            :toolbarsBackground="'#f6f8fa'"
-                            class="min-h-[300px]"
-                        />
-                        <div v-if="errors.content" class="flex justify-center mt-2">
-                            <ValidationWarning :message="errors.content" class="w-fit bg-yellow-50 border border-yellow-400 text-yellow-700 px-4 py-2 rounded shadow" />
-                        </div>
+                  <label class="font-medium w-24 text-lg">Content:</label>
+                  <div class="flex-1">
+                    <QuillEditor
+                      v-model:content="letter.content"
+                      :options="editorOptions"
+                      :toolbar="editorOptions.modules.toolbar"
+                      theme="snow"
+                      class="min-h-[300px]"
+                      @input="clearError('content')"
+                    />
+                    <div v-if="errors.content" class="flex justify-center mt-2">
+                      <ValidationWarning :message="errors.content" class="w-fit bg-yellow-50 border border-yellow-400 text-yellow-700 px-4 py-2 rounded shadow" />
                     </div>
-                </div>
-
+                  </div>
+                </div> <!-- Ensure this div is properly closed -->
                 <!-- Sender Information section -->
                 <div class="space-y-4 mt-8 pt-6 border-t">
                   <h3 class="font-medium text-lg">Sender Information</h3>
@@ -798,7 +774,7 @@ export default {
           recipients: this.letter.recipients
             .filter(r => r && r.id)
             .map(r => ({
-              id: parseInt(r.id, 10),
+              id: parseInt(r.id, 10),  // Ensure recipient ID is an integer
               name: r.name,
               position: r.position
             }))
