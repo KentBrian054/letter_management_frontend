@@ -1,28 +1,23 @@
 import { createApp } from 'vue'
 import App from './App.vue'
-import router from './router'
-import './index.css'
-import { QuillEditor } from '@vueup/vue-quill'
-import 'quill/dist/quill.snow.css'
-import Toast from 'vue-toastification'
-import 'vue-toastification/dist/index.css'
-import apiClient from './utils/apiClient'
-import '@/assets/styles/quill-font.css'
+import { createRouter, createWebHistory } from 'vue-router'
+import mavonEditor from 'mavon-editor'
+import 'mavon-editor/dist/css/index.css'
 
-const app = createApp(App)
+// Define your routes
+const routes = [
+  // Add your routes here
+  // Example:
+  // { path: '/', component: Home },
+]
 
-// Register global properties
-app.config.globalProperties.$http = apiClient
-
-// Register QuillEditor globally
-app.component('QuillEditor', QuillEditor)
-
-// Configure toast notifications
-app.use(Toast, {
-  timeout: 3000,
-  closeOnClick: true,
-  pauseOnFocusLoss: true,
+// Create router instance
+const router = createRouter({
+  history: createWebHistory(),
+  routes
 })
 
+const app = createApp(App)
 app.use(router)
+app.use(mavonEditor)
 app.mount('#app')

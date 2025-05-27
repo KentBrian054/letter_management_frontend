@@ -1,0 +1,40 @@
+export const editorOptions = {
+  toolbars: {
+    bold: true,
+    italic: true,
+    underline: true,
+    strikethrough: true,
+    mark: true,
+    header: true,
+    ol: true,
+    ul: true,
+    alignleft: true,
+    aligncenter: true,
+    alignright: true,
+    fullscreen: true,
+    htmlcode: true,
+    help: true,
+    undo: true,
+    redo: true,
+    link: true,
+    imagelink: true,
+    subfield: false,
+    preview: true,
+    fontSize: true,
+    fontFamily: true,
+    fontSizeUnit: 'px',
+    textColor: true,
+    backgroundColor: true,
+    code: true,
+    table: true,
+    header: [1, 2, 3, 4, 5, 6],
+    fontName: [
+      'Arial',
+      'Times New Roman',
+      'Courier New',
+      'Verdana'
+    ],
+    toolbarTips: true
+  },
+  placeholder: 'Enter content here'
+};

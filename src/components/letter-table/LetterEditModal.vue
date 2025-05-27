@@ -62,7 +62,6 @@
               </div>
             </div>
           </div>
-
           <!-- Content with updated styling -->
           <div class="h-full overflow-y-auto pt-20 px-8 pb-8 bg-gray-50">
             <div class="bg-white rounded-xl shadow-sm p-8">
@@ -75,9 +74,7 @@
                     <label class="font-medium w-24 text-lg">Type:</label>
                     <div class="flex flex-col">
                       <div class="relative">
-                        <!-- In the type select element -->
-                        
-                     
+                        <!-- In the type select element -->                   
                         <select
                           v-model="letter.type"  
                           required
@@ -98,10 +95,7 @@
                         </div>
                       </div>
                     </div>
-                    <!-- Template Field (right next to Type) -->
-                
-                    
-                   
+                    <!-- Template Field (right next to Type) -->      
                     <div class="flex items-center gap-4 ml-8">
                       <label class="font-medium w-24 text-lg">Template:</label>
                       <div class="relative">
@@ -165,11 +159,7 @@
                           :class="{ 'border-red-500': errors.recipients }"
                         >
                           <option value="">Select Recipient</option>
-                          <option
-                            v-for="r in recipientsList"
-                            :key="r.id"
-                            :value="r.id"
-                          >
+                          <option v-for="r in recipientsList" :key="r.id" :value="r.id">
                             {{ r.name }} - {{ r.position }}
                           </option>
                         </select>
@@ -250,26 +240,45 @@
                   </div>
                 </div>
 
-                <!-- Content -->
+                <!-- Content section -->
                 <div class="flex items-start gap-4 mt-6">
-                  <label class="font-medium w-24 text-lg pt-2">Content:</label>
-                  <div class="flex-1">
-                    <div class="relative">
-                      <QuillEditor
-                        v-model:content="letter.content"
-                        contentType="html"
-                        :options="editorOptions"
-                        class="h-[350px] min-h-[200px] border border-gray-300 rounded-lg bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200 transition-all"
-                        :class="{ 'border-red-500': errors.content }"
-                        @update:content="onContentInput"
-                      />
-                      <div class="absolute inset-0 pointer-events-none rounded-lg ring-1 ring-inset ring-gray-200"></div>
+                    <label class="font-medium w-24 text-lg">Content:</label>
+                    <div class="flex-1">
+                        <mavon-editor
+                            v-model="letter.content"
+                            :toolbars="{
+                                bold: true,
+                                italic: true,
+                                header: true,
+                                underline: true,
+                                strikethrough: true,
+                                mark: true,
+                                superscript: true,
+                                subscript: true,
+                                quote: true,
+                                ol: true,
+                                ul: true,
+                                link: true,
+                                imagelink: true,
+                                code: true,
+                                table: true,
+                                help: true,
+                                alignleft: true,
+                                aligncenter: true,
+                                alignright: true,
+                                preview: true,
+                                fullscreen: true
+                            }"
+                            :boxShadow="false"
+                            placeholder="Write your content here..."
+                            :subfield="false"
+                            :toolbarsBackground="'#f6f8fa'"
+                            class="min-h-[300px]"
+                        />
+                        <div v-if="errors.content" class="flex justify-center mt-2">
+                            <ValidationWarning :message="errors.content" class="w-fit bg-yellow-50 border border-yellow-400 text-yellow-700 px-4 py-2 rounded shadow" />
+                        </div>
                     </div>
-                    <!-- Improved single validation warning below the editor -->
-                    <div v-if="errors.content" class="flex justify-center mt-2">
-                      <ValidationWarning :message="errors.content" class="w-fit bg-yellow-50 border border-yellow-400 text-yellow-700 px-4 py-2 rounded shadow" />
-                    </div>
-                  </div>
                 </div>
 
                 <!-- Sender Information section -->
@@ -313,7 +322,7 @@
           </div>
         </div>
         </div> <!-- End .bg-white rounded-xl ... -->
-      </div> <!-- End .flex.items-center.justify-center.min-h-screen.p-4 -->
+      </div> <!-- End .flex.items-center.justify-center.min-h-screen.p-4 --> <!-- End .fixed.inset-0.z-50 -->
   </transition>
 
   <!-- Success Message Modal -->
@@ -409,20 +418,18 @@
 
 <script>
 import { onMounted, watch } from 'vue'
-import { Quill, QuillEditor } from '@vueup/vue-quill'
-import '@vueup/vue-quill/dist/vue-quill.snow.css'
-// Remove this import
-// import '@/assets/styles/quill-font.css'
 import apiClient from '@/utils/apiClient'
 import SuccessMessageModal from './modals/SuccessMessageModal.vue'
 import ValidationWarning from '@/components/common/ValidationWarning.vue'
+// Remove this import since we're using mavon-editor
+// import wysiwyg from "vue-wysiwyg";
+// import "vue-wysiwyg/dist/vueWysiwyg.css";
 
 export default {
   name: 'LetterEditModal',
   components: {
-    QuillEditor,
-    SuccessMessageModal, // Add this line
-    ValidationWarning // Register the component
+    SuccessMessageModal,
+    ValidationWarning
   },
   props: {
     modelValue: {
@@ -946,24 +953,44 @@ export default {
       this.$emit('show-success', message);
     }
   }, // End of methods
-  // In your mounted or created hook
-  if (Quill) {
-    const Font = Quill.import('formats/font')
-    Font.whitelist = [
-      'Arial',
-      'Times New Roman',
-      'Georgia',
-      'Helvetica',
-      'Verdana',
-      'Courier New'
-    ];
-    Quill.register(Font, true);
-  }
+  // Remove the mounted hook since we don't need Quill configuration
+  // mounted() {
+  //   if (Quill) {
+  //     const Font = Quill.import('formats/font')
+  //     Font.whitelist = [
+  //       'Arial',
+  //       'Times New Roman',
+  //       'Georgia',
+  //       'Helvetica',
+  //       'Verdana',
+  //       'Courier New'
+  //     ];
+  //     Quill.register(Font, true);
+  //   }
+  // }
 } // End of component export default
 </script>
 
 <style>
 .prose {
   width: 100%;
+}
+/* Mavon Editor Styles */
+.v-note-wrapper {
+    z-index: 1 !important;
+}
+
+.v-note-panel {
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 0.375rem !important;
+}
+
+.v-note-op {
+    border-bottom: 1px solid #e2e8f0 !important;
+    background-color: #f6f8fa !important;
+}
+
+.markdown-body {
+    background-color: white !important;
 }
 </style>

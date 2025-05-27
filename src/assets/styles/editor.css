@@ -1,0 +1,15 @@
+.vue-wysiwyg {
+  min-height: 350px;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+}
+
+.vue-wysiwyg .wysiwyg-toolbar {
+  border-bottom: 1px solid #d1d5db;
+  background: #f9fafb;
+}
+
+.vue-wysiwyg .wysiwyg-content {
+  min-height: 300px;
+  padding: 1rem;
+}

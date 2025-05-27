@@ -5,7 +5,7 @@ import RecipientTable from '@/components/recipient-table/RecipientTable.vue'
 const routes = [
   {
     path: '/',
-    redirect: '/letters'  // Add this redirect
+    redirect: '/letters'
   },
   {
     path: '/letters',
