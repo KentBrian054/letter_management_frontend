@@ -1,6 +1,7 @@
 
 import { ref, reactive } from 'vue';
 import { Quill } from '@vueup/vue-quill';
+import '@/assets/styles/quill-fonts.css';  // Add this import
 import apiClient from '@/utils/apiClient';
 
 export default function useLetterModal(props, emit) {
@@ -50,14 +51,36 @@ export default function useLetterModal(props, emit) {
         [{ 'direction': 'rtl' }],
         [{ 'size': ['small', false, 'large', 'huge'] }],
         [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+        [{ 'font': [
+          '',                  // Default sans-serif
+          'arial',             // Sans-serif
+          'times-new-roman',   // Serif
+          'georgia',           // Serif
+          'verdana',          // Sans-serif
+          'helvetica'         // Sans-serif
+        ] }],
         [{ 'color': [] }, { 'background': [] }],
-        [{ 'font': [] }],
         [{ 'align': [] }],
         ['clean']
       ]
     },
     placeholder: 'Compose your letter...',
     theme: 'snow'
+  };
+
+  const initQuill = () => {
+    if (Quill) {
+      const Font = Quill.import('formats/font');
+      Font.whitelist = [
+        '',                  // Default sans-serif
+        'arial',             // Sans-serif
+        'times-new-roman',   // Serif
+        'georgia',           // Serif
+        'verdana',          // Sans-serif
+        'helvetica'         // Sans-serif
+      ];
+      Quill.register(Font, true);
+    }
   };
 
   // Helper functions
@@ -130,17 +153,6 @@ export default function useLetterModal(props, emit) {
     }
 
     return isValid;
-  };
-
-  const initQuill = () => {
-    if (Quill) {
-      const Font = Quill.import('formats/font');
-      Font.whitelist = [
-        'arial', 'calibri', 'cambria', 'times-new-roman', 'courier', 'georgia', 
-        'garamond', 'tahoma', 'verdana', 'trebuchet', 'helvetica'
-      ];
-      Quill.register(Font, true);
-    }
   };
 
   const fetchRecipients = async () => {
@@ -335,138 +347,43 @@ export default function useLetterModal(props, emit) {
     return recipientsList.value.filter(r => !selectedIds.includes(r.id));
   };
 
-  // Define clearErrors function
-  const clearErrors = () => {
-    Object.keys(errors).forEach(key => delete errors[key]);
-  };
-
-  const handleTemplateChange = async (event) => {
-    const templateId = event?.target?.value; // Ensure event and target are defined
+  const handleTemplateChange = async (templateId) => {
     if (!templateId) return;
-  
+    
     try {
-      console.log('Fetching template with ID:', templateId);
       isTemplateLoading.value = true;
       const response = await apiClient.get(`/templates/${templateId}`);
-  
-      if (!response.data || !response.data.data) {
-        throw new Error('Template not found');
-      }
-  
       const template = response.data.data || response.data;
-  
-      const normalizedType = template.type?.toLowerCase() || '';
-  
-      const updatedData = {
-        title: template.title || '',
-        type: normalizedType === 'invitation meeting' ? 'Invitation Meeting' : 
-              normalizedType === 'letter to admin' ? 'Letter to Admin' : 
-              template.type || '',
-        subject: template.subject || '',
-        content: template.content || '',
-        sender_name: template.sender_name || '',
-        sender_position: template.sender_position || '',
-        date: template.date || new Date().toISOString().split('T')[0],
-        recipients: Array.isArray(template.recipients) && template.recipients.length > 0
-          ? template.recipients.map(r => ({
-              id: r.id || '',
-              name: r.name || '',
-              position: r.position || ''
-            }))
-          : [{ id: '', name: '', position: '' }]
-      };
-  
-      Object.assign(letterForm, updatedData);
-  
-      if (template.recipients?.length > 0) {
-        await fetchRecipients();
+      
+      // Pre-fill all form fields with template data
+      letterForm.title = template.title || '';
+      letterForm.type = template.type || '';
+      letterForm.subject = template.subject || '';
+      letterForm.content = template.content || '';
+      letterForm.date = template.date ? formatDateForInput(template.date) : defaultForm.date;
+      letterForm.sender_name = template.sender_name || '';
+      letterForm.sender_position = template.sender_position || '';
+      
+      // Handle recipients
+      if (template.recipients && template.recipients.length > 0) {
+        letterForm.recipients = template.recipients.map(r => ({
+          id: r.id || '',
+          name: r.name || '',
+          position: r.position || ''
+        }));
       }
-  
-      clearErrors();  // Call the newly defined clearErrors function
+      
+      // Clear any existing errors
+      Object.keys(errors).forEach(key => delete errors[key]);
+      
     } catch (error) {
       console.error('Error loading template:', error);
-      errors.template = error.message || 'Failed to load template';
+      errors.template = 'Failed to load template. Please try again.';
     } finally {
       isTemplateLoading.value = false;
     }
   };
 
-  // Add these functions before the return statement
-  const handleSaveLetter = async () => {
-    if (isSubmitting.value) return;
-    
-    // Trigger validation
-    if (!validateForm()) {
-      showConfirmModal.value = false; // Ensure confirmation modal is not shown if validation fails
-      return;
-    }
-
-    try {
-      isSubmitting.value = true;
-      const payload = {
-        ...letterForm,
-        recipients: letterForm.recipients
-          .filter(r => r && r.id)
-          .map(r => parseInt(r.id, 10))
-      };
-
-      // Update the endpoint to use /api/letters
-      const response = await apiClient.post('/api/letters', payload);
-      showSuccess.value = true;
-      emit('save-letter', response.data);
-      emit('refresh-letters');
-      
-      setTimeout(() => {
-        showSuccess.value = false;
-        emit('update:modelValue', false);
-        emit('close');
-      }, 2000);
-    } catch (error) {
-      console.error('Error saving letter:', error);
-      errors.submit = 'Failed to save letter. Please try again.';
-    } finally {
-      isSubmitting.value = false;
-    }
-  };
-
-  const handleUpdateLetter = async () => {
-    if (isSubmitting.value) return;
-    
-    // Trigger validation
-    if (!validateForm()) {
-      showConfirmModal.value = false; // Ensure confirmation modal is not shown if validation fails
-      return;
-    }
-
-    try {
-      isSubmitting.value = true;
-      const payload = {
-        ...letterForm,
-        recipients: letterForm.recipients
-          .filter(r => r && r.id)
-          .map(r => parseInt(r.id, 10))
-      };
-
-      // Update the endpoint to use /api/letters
-      const response = await apiClient.put(`/api/letters/${props.letter.id}`, payload);
-      showSuccess.value = true;
-      emit('update-letter', response.data);
-      emit('refresh-letters');
-      
-      setTimeout(() => {
-        showSuccess.value = false;
-        emit('update:modelValue', false);
-        emit('close');
-      }, 2000);
-    } catch (error) {
-      console.error('Error updating letter:', error);
-      errors.submit = 'Failed to update letter. Please try again.';
-    } finally {
-      isSubmitting.value = false;
-    }
-  };
-
-  // Update the return statement to include the new functions
   return {
     letterForm,
     errors,
@@ -485,19 +402,17 @@ export default function useLetterModal(props, emit) {
     validateForm,
     initQuill,
     fetchRecipients,
-    fetchTemplates,  // Add this line
+    fetchTemplates,
     handleBack,
     handleSubmit,
     confirmSubmit,
     handleQuickSave,
     confirmQuickSave,
-    updateRecipient,    // Add this line
-    addRecipient,       // Add this line
-    removeRecipient,    // Add this line
-    getAvailableRecipients,  // Add this line
+    updateRecipient,
+    addRecipient,
+    removeRecipient,
+    getAvailableRecipients,
     handleTemplateChange,  // Add this line
-    handleSaveLetter,    // Add this
-    handleUpdateLetter,  // Add this
   };
 }
     

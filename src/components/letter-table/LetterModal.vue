@@ -57,85 +57,142 @@
           <!-- Form Content -->
           <div class="h-full overflow-y-auto pt-20 px-8 pb-8 bg-gray-50">
             <div class="bg-white rounded-xl shadow-sm p-8">
-              <!-- Type and Template Selection -->
-              <div class="flex items-center gap-8 mb-6">
-                <div class="flex items-center gap-4">
-                  <label class="font-medium w-24 text-lg">Type:</label>
-                  <select
-                    v-model="letterForm.type"
-                    required
-                    class="w-[200px] border rounded-md px-4 py-2"
-                    @change="clearError('type')"
-                  >
-                    <option value="" disabled>Select Type</option>
-                    <option value="Memo">Memo</option>
-                    <option value="Endorsement">Endorsement</option>
-                    <option value="Invitation Meeting">Invitation Meeting</option>
-                    <option value="Letter to Admin">Letter to Admin</option>
-                  </select>
-                </div>
-                
-                <div class="flex items-center gap-4">
-                  <label class="font-medium w-24 text-lg">Template:</label>
-                  <select
-                    v-model="selectedTemplate"
-                    class="w-[200px] border rounded-md px-4 py-2"
-                    @change="handleTemplateChange"
-                  >
-                    <option value="">Select Template</option>
-                    <option v-for="template in templates" :key="template.id" :value="template.id">
-                      {{ template.name }}
-                    </option>
-                  </select>
-                </div>
-              </div>
-
-              <!-- Recipients Section -->
-              <div class="mb-6">
-                <div class="flex items-center gap-4">
-                  <label class="font-medium w-24 text-lg">FOR:</label>
-                  <div class="flex-1">
-                    <div v-for="(recipient, index) in letterForm.recipients" :key="index" class="relative flex items-center mb-2">
-                      <select
-                        v-model="recipient.id"
-                        @change="updateRecipient(index, $event.target.value)"
-                        class="w-[500px] border rounded-md px-4 py-2 appearance-none bg-white pr-10"
-                        :class="{ 'border-red-500': errors.recipients }"
-                      >
-                        <option value="">Select Recipient</option>
-                        <option 
-                          v-for="r in recipientsList" 
-                          :key="r.id" 
-                          :value="r.id"
-                          :disabled="letterForm.recipients.some(existing => existing.id === r.id && existing !== recipient)"
+              <form @submit.prevent="handleSubmit" class="space-y-8">
+                <!-- Letter Type -->
+                <!-- Letter Type and Template in a row -->
+                <div class="flex items-center gap-8">
+                  <!-- Type Field -->
+                  <div class="flex items-center gap-4">
+                    <label class="font-medium w-24 text-lg">Type:</label>
+                    <div class="flex flex-col">
+                      <div class="relative">
+                  
+                        <select
+                          v-model="letterForm.type" 
+                          required
+                          class="w-[200px] border rounded-md px-4 py-2 text-base bg-white appearance-none pr-10"
+                          @change="clearError('type')"
                         >
-                          {{ r.name }} - {{ r.position }}
-                        </option>
-                      </select>
-                      <button
-                        v-if="letterForm.recipients.length > 1"
-                        @click="removeRecipient(index)"
-                        type="button"
-                        class="absolute right-[-40px] p-1.5 text-red-500 hover:text-white hover:bg-red-500 rounded-full transition-all duration-200"
-                      >
-                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
-                        </svg>
-                      </button>
+                          <option value="" disabled>Select Type</option>
+                          <option value="Memo">Memo</option>
+                          <option value="Endorsement">Endorsement</option>
+                          <option value="Invitation Meeting">Invitation Meeting</option>
+                          <option value="Letter to Admin">Letter to Admin</option>
+                        </select>
+                        <ValidationWarning v-if="errors.type" :message="errors.type" />
+                        <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                          <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
+                      </div>
                     </div>
+                                 
+                    <!-- Replace the existing template selection part -->
+                    <div class="flex items-center gap-4 ml-8">
+                      <label class="font-medium w-24 text-lg">Template:</label>
+                      <div class="relative">
+                        <select
+                          v-model="selectedTemplate"
+                          class="w-[200px] border rounded-md px-4 py-2 text-base bg-white appearance-none pr-10"
+                          :disabled="isTemplateLoading"
+                        >
+                          <option value="">Select Template</option>
+                          <option 
+                            v-for="template in templates" 
+                            :key="template.id" 
+                            :value="template.id"
+                          >
+                            {{ template.name }}
+                          </option>
+                        </select>
+                        <!-- Loading overlay -->
+                        <div 
+                          v-if="isTemplateLoading" 
+                          class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
+                        >
+                          <div class="bg-white p-8 rounded-lg shadow-lg flex flex-col items-center">
+                            <svg class="animate-spin h-12 w-12 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span class="mt-4 text-gray-700">Loading Template...</span>
+                          </div>
+                        </div>
+                        <!-- Dropdown arrow -->
+                        <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                          <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  </div>           
+                </div>
+          
+                <div class="space-y-4">
+                  <div class="flex items-center gap-4">
+                    <label class="font-medium w-24 text-lg">FOR:</label>
                     <button
                       type="button"
                       @click="addRecipient"
-                      class="mt-2 border rounded-md px-4 py-2 bg-gray-50 hover:bg-gray-100 flex items-center gap-2"
+                      class="border rounded-md px-4 py-2 bg-gray-50 hover:bg-gray-100 text-base flex items-center gap-2"
                     >
                       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                       </svg>
                       Add Recipient
                     </button>
-                    <span v-if="errors.recipients" class="text-red-500 text-sm mt-1 block">
-                      {{ errors.recipients }}
-                    </span>
+                  </div>
+
+                  <!-- Recipient rows -->
+                  <div v-for="(recipient, index) in letterForm.recipients" :key="index" class="flex items-center gap-4 ml-24">
+                    <div class="flex-1">
+                      <div class="relative flex items-center">
+                        <select
+                          v-model="recipient.id"
+                          @change="updateRecipient(index, $event.target.value)"
+                          class="w-[500px] border rounded-md px-4 py-2 appearance-none bg-white pr-10"
+                          :class="{ 'border-red-500': errors.recipients }"
+                        >
+                          <option value="">Select Recipient</option>
+                          <option
+                            v-for="r in recipientsList"
+                            :key="r.id"
+                            :value="r.id"
+                          >
+                            {{ r.name }} - {{ r.position }}
+                          </option>
+                        </select>
+                        <button
+                          v-if="letterForm.recipients.length > 1"
+                          @click="removeRecipient(index)"
+                          type="button"
+                          class="absolute right-[-40px] p-1.5 text-red-500 hover:text-white hover:bg-red-500 rounded-full transition-all duration-200"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-5 h-5">
+                            <path d="M6 21h12V7H6v14zm2.46-9.12l1.41-1.41L12 12.59l2.12-2.12l1.41 1.41L13.41 14l2.12 2.12l-1.41 1.41L12 15.41l-2.12 2.12l-1.41-1.41L10.59 14l-2.13-2.12zM15.5 4l-1-1h-5l-1 1H5v2h14V4h-3.5z" fill="currentColor"/>
+                          </svg>
+                        </button>
+                      </div>
+
+                      <div v-if="recipient.name && recipient.position" class="mt-1 text-sm text-gray-600 flex items-center gap-2">
+                        <span
+                          class="cursor-pointer text-blue-600 underline"
+                          @click="showPdfPreviewButton(index)"
+                        >
+                          Selected: {{ recipient.name }} - {{ recipient.position }}
+                        </span>
+                        <button
+                          v-if="pdfPreviewIndex === index"
+                          @click="previewRecipientPdf(recipient)"
+                          type="button"
+                          class="ml-2 px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                        >
+                          Preview PDF
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -259,8 +316,54 @@
 </template>
 
 <style>
-.prose {
-  width: 100%;
+/* Default font (empty string) */
+.ql-snow .ql-picker.ql-font .ql-picker-label[data-value=""]::before,
+.ql-snow .ql-picker.ql-font .ql-picker-item[data-value=""]::before {
+  content: 'Sans Serif';
+  font-family: Arial, sans-serif;
+}
+
+/* Font picker labels */
+.ql-snow .ql-picker.ql-font .ql-picker-label[data-value="arial"]::before,
+.ql-snow .ql-picker.ql-font .ql-picker-item[data-value="arial"]::before {
+  content: 'Arial';
+  font-family: Arial, sans-serif;
+}
+
+.ql-snow .ql-picker.ql-font .ql-picker-label[data-value="times-new-roman"]::before,
+.ql-snow .ql-picker.ql-font .ql-picker-item[data-value="times-new-roman"]::before {
+  content: 'Times New Roman';
+  font-family: 'Times New Roman', serif;
+}
+
+.ql-snow .ql-picker.ql-font .ql-picker-label[data-value="georgia"]::before,
+.ql-snow .ql-picker.ql-font .ql-picker-item[data-value="georgia"]::before {
+  content: 'Georgia';
+  font-family: Georgia, serif;
+}
+
+.ql-snow .ql-picker.ql-font .ql-picker-label[data-value="verdana"]::before,
+.ql-snow .ql-picker.ql-font .ql-picker-item[data-value="verdana"]::before {
+  content: 'Verdana';
+  font-family: Verdana, sans-serif;
+}
+
+.ql-snow .ql-picker.ql-font .ql-picker-label[data-value="helvetica"]::before,
+.ql-snow .ql-picker.ql-font .ql-picker-item[data-value="helvetica"]::before {
+  content: 'Helvetica';
+  font-family: Helvetica, Arial, sans-serif;
+}
+
+/* Font class mappings */
+.ql-font-arial { font-family: Arial, sans-serif !important; }
+.ql-font-times-new-roman { font-family: 'Times New Roman', serif !important; }
+.ql-font-georgia { font-family: Georgia, serif !important; }
+.ql-font-verdana { font-family: Verdana, sans-serif !important; }
+.ql-font-helvetica { font-family: Helvetica, Arial, sans-serif !important; }
+
+/* Default editor font */
+.ql-editor {
+  font-family: Arial, sans-serif;
 }
 </style>
 
@@ -297,25 +400,30 @@ export default {
   emits: ['update:modelValue', 'close', 'save-letter', 'update-letter', 'refresh-letters', 'update:editMode', 'template-saved'],
 
   setup(props, { emit }) {
-    const letterModal = useLetterModal(props, emit)
+    const letterModal = useLetterModal(props, emit);
     
-    watch(() => letterModal.selectedTemplate.value, (newVal) => {
+    watch(() => letterModal.selectedTemplate.value, async (newVal) => {
       if (newVal) {
-        letterModal.handleTemplateChange(newVal)
+        await letterModal.handleTemplateChange(newVal);
       }
-    })
+    });
 
     onMounted(() => {
-      letterModal.initQuill()
-      letterModal.fetchRecipients()
-      letterModal.fetchTemplates()
-    })
+      letterModal.initQuill();
+      letterModal.fetchRecipients();
+      letterModal.fetchTemplates();
+    });
 
     return {
-      ...letterModal
+      ...letterModal,
+      letterForm: letterModal.letterForm,
+      selectedTemplate: letterModal.selectedTemplate,
+      isTemplateLoading: letterModal.isTemplateLoading,
+      templates: letterModal.templates,
+      handleTemplateChange: letterModal.handleTemplateChange,
     }
   }
-}
+};
 </script>
 
 
