@@ -19,8 +19,11 @@ const routes = [
   }
 ]
 
+// Use environment variable for base, fallback to '/' for local development
+const base = process.env.BASE_URL || '/'
+
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(base),
   routes
 })
 

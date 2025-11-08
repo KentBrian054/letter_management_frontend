@@ -10,5 +10,6 @@ import apiClient from './utils/apiClient'
 
 const app = createApp(App)
 app.use(router)
+app.use(Toast)  // Register Toast plugin
 app.component('QuillEditor', QuillEditor)  // Register QuillEditor as a global component
 app.mount('#app')

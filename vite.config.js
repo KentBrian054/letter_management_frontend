@@ -3,6 +3,8 @@ import vue from '@vitejs/plugin-vue'
 import path from 'path'
 
 export default defineConfig({
+  // Set base to '/' for Vercel deployment
+  base: '/',
   plugins: [
     vue({
       template: {
@@ -24,5 +26,11 @@ export default defineConfig({
     hmr: {
       clientPort: 3000
     }
+  },
+  // Add build configuration
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
+    sourcemap: false
   }
 })
