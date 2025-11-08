@@ -3,6 +3,10 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=9.0.0"
+  },
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
@@ -18,6 +22,7 @@
     "@heroicons/vue": "^2.0.18",
     "@pdftron/webviewer": "^11.3.0",
     "@types/lodash-es": "^4.17.12",
+    "@vueup/vue-quill": "^1.2.0",
     "axios": "^1.6.7",
     "axios-retry": "^4.0.0",
     "codemirror": "^5.65.0",
@@ -35,21 +40,22 @@
     "vue-wysiwyg": "^1.7.2"
   },
   "devDependencies": {
-    "@eslint/js": "^9.26.0",
+    "@eslint/js": "^9.39.1",
     "@types/lodash": "^4.17.16",
     "@types/webpack-env": "^1.18.8",
-    "@typescript-eslint/eslint-plugin": "^7.18.0",
-    "@typescript-eslint/parser": "^7.18.0",
+    "@typescript-eslint/eslint-plugin": "^8.46.3",
+    "@typescript-eslint/parser": "^8.46.3",
     "@vitejs/plugin-react": "^4.3.4",
     "@vitejs/plugin-vue": "^5.2.3",
     "@vue/eslint-config-typescript": "^14.5.0",
     "@vue/runtime-dom": "^3.5.13",
     "autoprefixer": "^10.4.21",
-    "eslint": "^9.26.0",
+    "eslint": "^9.39.1",
     "eslint-plugin-vue": "^9.25.0",
     "globals": "^16.1.0",
     "postcss": "^8.5.3",
     "tailwindcss": "^3.4.17",
+    "typescript": "^5.9.3",
     "vite": "^5.4.16"
   }
 }
