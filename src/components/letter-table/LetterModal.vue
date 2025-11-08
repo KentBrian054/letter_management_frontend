@@ -195,62 +195,62 @@
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <!-- Subject Field -->
-              <div class="flex items-center gap-4 mb-6">
-                <label class="font-medium w-24 text-lg">Subject:</label>
-                <input
-                  v-model="letterForm.subject"
-                  type="text"
-                  required
-                  class="flex-1 border rounded-md px-4 py-2"
-                  @input="clearError('subject')"
-                />
-                <span v-if="errors.subject" class="text-red-500 text-sm mt-1 block">
-                  {{ errors.subject }}
-                </span>
-              </div>
+                <!-- Subject Field -->
+                <div class="flex items-center gap-4 mb-6">
+                  <label class="font-medium w-24 text-lg">Subject:</label>
+                  <input
+                    v-model="letterForm.subject"
+                    type="text"
+                    required
+                    class="flex-1 border rounded-md px-4 py-2"
+                    @input="clearError('subject')"
+                  />
+                  <span v-if="errors.subject" class="text-red-500 text-sm mt-1 block">
+                    {{ errors.subject }}
+                  </span>
+                </div>
 
-              <!-- Editor -->
-              <div class="mb-6">
-                <label class="font-medium text-lg mb-2 block">Content:</label>
-                <QuillEditor
-                  v-model:content="letterForm.content"
-                  :options="editorOptions"
-                  :toolbar="editorOptions.modules.toolbar"
-                  theme="snow"
-                  class="min-h-[400px]"
-                  @input="clearError('content')"
-                />
-              </div>
+                <!-- Editor -->
+                <div class="mb-6">
+                  <label class="font-medium text-lg mb-2 block">Content:</label>
+                  <QuillEditor
+                    v-model:content="letterForm.content"
+                    :options="editorOptions"
+                    :toolbar="editorOptions.modules.toolbar"
+                    theme="snow"
+                    class="min-h-[400px]"
+                    @input="clearError('content')"
+                  />
+                </div>
 
-              <!-- Sender Information -->
-              <div class="border-t pt-6">
-                <h3 class="font-medium text-lg mb-4">Sender Information</h3>
-                <div class="space-y-4">
-                  <div class="flex items-center gap-4">
-                    <label class="font-medium w-24 text-lg">Name:</label>
-                    <input
-                      v-model="letterForm.sender_name"
-                      type="text"
-                      required
-                      class="flex-1 border rounded-md px-4 py-2"
-                      @input="clearError('sender_name')"
-                    />
-                  </div>
-                  <div class="flex items-center gap-4">
-                    <label class="font-medium w-24 text-lg">Position:</label>
-                    <input
-                      v-model="letterForm.sender_position"
-                      type="text"
-                      required
-                      class="flex-1 border rounded-md px-4 py-2"
-                      @input="clearError('sender_position')"
-                    />
+                <!-- Sender Information -->
+                <div class="border-t pt-6">
+                  <h3 class="font-medium text-lg mb-4">Sender Information</h3>
+                  <div class="space-y-4">
+                    <div class="flex items-center gap-4">
+                      <label class="font-medium w-24 text-lg">Name:</label>
+                      <input
+                        v-model="letterForm.sender_name"
+                        type="text"
+                        required
+                        class="flex-1 border rounded-md px-4 py-2"
+                        @input="clearError('sender_name')"
+                      />
+                    </div>
+                    <div class="flex items-center gap-4">
+                      <label class="font-medium w-24 text-lg">Position:</label>
+                      <input
+                        v-model="letterForm.sender_position"
+                        type="text"
+                        required
+                        class="flex-1 border rounded-md px-4 py-2"
+                        @input="clearError('sender_position')"
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
+              </form>
             </div>
           </div>
 
@@ -367,7 +367,6 @@
 }
 </style>
 
-
 <script>
 import { onMounted, watch } from 'vue'
 import { QuillEditor } from '@vueup/vue-quill'
@@ -425,5 +424,3 @@ export default {
   }
 };
 </script>
-
-
